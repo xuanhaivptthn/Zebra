@@ -1,0 +1,11 @@
+{
+    “applinks”: {
+        “apps”: [],
+        “details”: [
+            {
+                “appID”: “xyz.willy.Zebra”,
+                “paths”: [“*”],
+            }
+        ]
+    }
+}
