@@ -468,7 +468,6 @@
 		89D230172242B27500837C3B /* default.list */ = {isa = PBXFileReference; lastKnownFileType = text; path = default.list; sourceTree = "<group>"; };
 		89DD26842201571900CD31A0 /* ZBQueue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZBQueue.h; sourceTree = "<group>"; };
 		89DD26852201571900CD31A0 /* ZBQueue.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZBQueue.m; sourceTree = "<group>"; };
-		89DD26872201576500CD31A0 /* ZBQueueType.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZBQueueType.h; sourceTree = "<group>"; };
 		89E3BD952428565100BF81A4 /* ZBSectionSelectorTableViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZBSectionSelectorTableViewController.h; sourceTree = "<group>"; };
 		89E3BD962428565100BF81A4 /* ZBSectionSelectorTableViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZBSectionSelectorTableViewController.m; sourceTree = "<group>"; };
 		89E3BD9824285F3C00BF81A4 /* ZBAuthorSelectorTableViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZBAuthorSelectorTableViewController.h; sourceTree = "<group>"; };
@@ -1043,7 +1042,6 @@
 		89DD2683220156F800CD31A0 /* Queue */ = {
 			isa = PBXGroup;
 			children = (
-				89DD26872201576500CD31A0 /* ZBQueueType.h */,
 				89DD26842201571900CD31A0 /* ZBQueue.h */,
 				89DD26852201571900CD31A0 /* ZBQueue.m */,
 				8900FA4E2201E9C200476310 /* ZBQueueViewController.h */,

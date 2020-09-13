@@ -7,28 +7,26 @@
 //
 
 #import "ZBQueue.h"
-#import <Tabs/Packages/Helpers/ZBPackage.h>
-#import <Tabs/Sources/Helpers/ZBSource.h>
-#import <Tabs/Packages/Helpers/ZBPackageActions.h>
-#import <ZBAppDelegate.h>
-#import <Database/ZBDependencyResolver.h>
-#import <Database/ZBDatabaseManager.h>
-#import <ZBDevice.h>
-#import <Console/ZBStage.h>
-#import <Tabs/ZBTabBarController.h>
 
-@interface ZBQueue ()
-@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSMutableArray <ZBPackage *> *> *managedQueue;
+#import <Tabs/Packages/Helpers/ZBPackage.h>
+
+@interface ZBQueue () {
+    NSMutableArray *installQueue;
+    NSMutableArray *removeQueue;
+    NSMutableArray *reinstallQueue;
+    NSMutableArray *upgradeQueue;
+    NSMutableArray *downgradeQueue;
+    NSMutableArray *dependencyQueue;
+    NSMutableArray *conflictQueue;
+    NSMutableArray *packagesToDownload;
+}
 @end
 
 @implementation ZBQueue
 
-@synthesize managedQueue;
-@synthesize queuedPackagesList;
-@synthesize removingZebra;
-@synthesize zebraPath;
+#pragma mark - Initializers
 
-+ (id)sharedQueue {
++ (instancetype)sharedQueue {
     static ZBQueue *instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -37,756 +35,101 @@
     return instance;
 }
 
-+ (int)count {
-    int numberOfPackages = 0;
-    for (NSArray *queue in [[self sharedQueue] queues]) {
-        numberOfPackages += [queue count];
-    }
-    numberOfPackages += [[[self sharedQueue] dependencyQueue] count]; //dependencyQueue is not a member of [self queues]
-    numberOfPackages += [[[self sharedQueue] conflictQueue] count]; //conflictQueue is not a member of [self queues]
-    return numberOfPackages;
-}
-
 - (id)init {
     self = [super init];
     
     if (self) {
-        managedQueue = [NSMutableDictionary new];
-        for (ZBQueueType q = ZBQueueTypeInstall; q <= ZBQueueTypeDependency; q <<= 1) {
-            [managedQueue setObject:[NSMutableArray new] forKey:@(q)];
-        }
-        queuedPackagesList = [NSMutableArray new];
+        installQueue = [NSMutableArray new];
+        removeQueue = [NSMutableArray new];
+        reinstallQueue = [NSMutableArray new];
+        upgradeQueue = [NSMutableArray new];
+        downgradeQueue = [NSMutableArray new];
+        dependencyQueue = [NSMutableArray new];
+        conflictQueue = [NSMutableArray new];
     }
     
     return self;
 }
 
-- (void)updateQueueBarData {
-    [[ZBAppDelegate tabBarController] updateQueueBar];
+#pragma mark - Properties
+
+- (unsigned long long)count {
+    return installQueue.count + removeQueue.count + dependencyQueue.count + conflictQueue.count;
 }
 
-- (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue {
-    if (package == NULL) return;
+- (unsigned long long)downloadsRemaining {
+    return packagesToDownload.count;
+}
+
+#pragma mark - Adding to the Queue
+
+- (void)add:(ZBPackage *)package to:(ZBQueueType)queue {
+    if (queue == ZBQueueTypeNone) return;
     
-    if (queue == ZBQueueTypeRemove && ![package isInstalled:YES]) { //Trying to remove a package that isn't installed
-        package = [package removeableCandidate];
+    switch(queue) {
+        case ZBQueueTypeInstall:
+        case ZBQueueTypeReinstall:
+        case ZBQueueTypeUpgrade:
+        case ZBQueueTypeDowngrade:
+        case ZBQueueTypeDependency:
+            [packagesToDownload addObject:package];
+        case ZBQueueTypeRemove:
+        case ZBQueueTypeConflict:
+            [[self queueForType:queue] addObject:package];
+        default:
+            break;
     }
+}
+
+- (void)remove:(ZBPackage *)package {
+    [self remove:package from:[self locate:package]];
+}
+
+- (void)remove:(ZBPackage *)package from:(ZBQueueType)queue {
+    if (queue == ZBQueueTypeNone) return;
     
-    ZBQueueType type = [self locate:package];
-    if (type != ZBQueueTypeClear) { //Remove package from queue, this probably needs to be rewritten to support the same package with a different version being added to the same queue
-        [self removePackage:package inQueue:type versionStrict:NO];
-        type = ZBQueueTypeClear;
+    switch(queue) {
+        case ZBQueueTypeInstall:
+        case ZBQueueTypeReinstall:
+        case ZBQueueTypeUpgrade:
+        case ZBQueueTypeDowngrade:
+        case ZBQueueTypeDependency:
+            [packagesToDownload removeObject:package];
+        case ZBQueueTypeRemove:
+        case ZBQueueTypeConflict:
+            [[self queueForType:queue] removeObject:package];
+        default:
+            break;
     }
-    if (type != queue) {
-        if (!package || ![package identifier]) return;
-        [[self queueFromType:queue] addObject:package];
-        [queuedPackagesList addObject:[package identifier]];
-        if (queue == ZBQueueTypeInstall || queue == ZBQueueTypeUpgrade || queue == ZBQueueTypeDowngrade) {
-            NSLog(@"[Zebra] Finding dependencies for %@", package);
-            if ([self enqueueDependenciesForPackage:package]) {
-                NSLog(@"[Zebra] All dependencies found for %@", package);
-            }
-            else {
-                NSLog(@"[Zebra] Unable to find all dependencies for %@", package);
-            }
-        }
-        else if (queue == ZBQueueTypeRemove) {
-            NSLog(@"[Zebra] Removing packages that depend on %@", package);
-            [self enqueueRemovalOfPackagesThatDependOn:package];
-
-        }
-    }
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"ZBPackageStatusUpdate" object:nil];
-    [self updateQueueBarData];
-}
-
-- (void)addPackages:(NSArray <ZBPackage *> *)packages toQueue:(ZBQueueType)queue {
-    for (ZBPackage *package in packages) {
-        [self addPackage:package toQueue:queue];
-    }
-}
-
-- (void)addDependency:(ZBPackage *)package {
-    if (![[self dependencyQueue] containsObject:package]) {
-        [queuedPackagesList addObject:[package identifier]];
-        for (NSString *providedPackage in [package provides]) {
-            NSArray *components = [providedPackage componentsSeparatedByString:@"("];
-            NSString *packageID = [components[0] stringByReplacingOccurrencesOfString:@" " withString:@""];
-            [queuedPackagesList addObject:packageID];
-        }
-        
-        [[self dependencyQueue] addObject:package];
-    }
-    [self updateQueueBarData];
-}
-
-- (void)addConflict:(ZBPackage *)package {
-    [self addConflict:package removeDependencies:YES];
-}
-
-- (void)addConflict:(ZBPackage *)package removeDependencies:(BOOL)remove {
-    ZBQueueType location = [self locate:package];
-    if (location != ZBQueueTypeClear) {
-        [self removePackage:package inQueue:location];
-    }
-    if (![[self conflictQueue] containsObject:package]) {
-        package.ignoreDependencies = !remove;
-        [[self conflictQueue] addObject:package];
-        if (remove) [self enqueueRemovalOfPackagesThatDependOn:package];
-    }
-    [self updateQueueBarData];
-}
-
-- (BOOL)enqueueDependenciesForPackage:(ZBPackage *)package {
-    ZBDependencyResolver *resolver = [[ZBDependencyResolver alloc] initWithPackage:package];
-    return [resolver immediateResolution];
-}
-
-- (void)enqueueRemovalOfPackagesThatDependOn:(ZBPackage *)package {
-    [self addPackages:[[ZBDatabaseManager sharedInstance] packagesThatDependOn:package] toQueue:ZBQueueTypeRemove];
-}
-
-- (void)removePackage:(ZBPackage *)package {
-    ZBQueueType action = [self locate:package];
-    if (action == ZBQueueTypeRemove) {
-        ZBPackage *topPackage = package;
-        while ([topPackage removedBy] != NULL) {
-            topPackage = [topPackage removedBy];
-        }
-        [self removePackage:topPackage inQueue:ZBQueueTypeRemove];
-        [self removePackagesRemovedBy:topPackage];
-    }
-    else if (action != ZBQueueTypeClear) {
-        [self removePackage:package inQueue:action];
-        for (ZBPackage *dependency in [[package dependencies] copy]) {
-            [[dependency dependencyOf] removeObject:package];
-            if ([[dependency dependencyOf] count] <= 1) {
-                [self removePackage:dependency];
-            }
-        }
-        for (ZBPackage *dependencyOf in [[package dependencyOf] copy]) {
-            [[dependencyOf dependencies] removeObject:package];
-            [self removePackage:dependencyOf];
-        }
-    }
-    [queuedPackagesList removeObject:[package identifier]];
-    [self updateQueueBarData];
-}
-
-- (void)removePackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
-    [[package issues] removeAllObjects];
-    [package setRemovedBy:NULL];
-    [[self queueFromType:queue] removeObject:package];
-    [self updateQueueBarData];
-}
-
-- (void)removePackage:(ZBPackage *)package inQueue:(ZBQueueType)queue versionStrict:(BOOL)strict {
-    if (!strict) {
-        for (ZBPackage *queuedPackage in [self queueFromType:queue]) {
-            if ([[package identifier] isEqualToString:[queuedPackage identifier]]) {
-                package = queuedPackage;
-                break;
-            }
-        }
-    }
-    
-    [[package issues] removeAllObjects];
-    [package setRemovedBy:NULL];
-    [[self queueFromType:queue] removeObject:package];
-    [self updateQueueBarData];
-}
-
-- (void)removePackagesRemovedBy:(ZBPackage *)package {
-    for (ZBPackage *removedPackage in [[self removeQueue] copy]) {
-        if ([[removedPackage removedBy] isEqual:package]) {
-            [self removePackage:removedPackage inQueue:ZBQueueTypeRemove];
-            [self removePackagesRemovedBy:removedPackage];
-        }
-    }
-}
-
-- (void)clear {
-    for (NSMutableArray *array in [self queues]) {
-        for (ZBPackage *package in array) {
-            [[package issues] removeAllObjects];
-            [[package dependencies] removeAllObjects];
-            [[package dependencyOf] removeAllObjects];
-        }
-        [array removeAllObjects];
-    }
-    [[self dependencyQueue] removeAllObjects];
-    [[self conflictQueue] removeAllObjects];
-    [queuedPackagesList removeAllObjects];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"ZBPackageStatusUpdate" object:nil];
-    [self updateQueueBarData];
-    [self dismissQueueBar];
-}
-
-- (void)dismissQueueBar {
-    [[ZBAppDelegate tabBarController] closeQueue];
-}
-
-- (NSArray *)tasksToPerform {
-    NSMutableArray<NSArray *> *commands = [NSMutableArray new];
-    NSArray *baseCommand;
-    BOOL ignoreDependencies = [self containsPackageWithIgnoredDependencies]; //fallback to dpkg
-    
-    if (ignoreDependencies || [[ZBDevice packageManagementBinary] isEqualToString:@"/usr/bin/dpkg"]) {
-        baseCommand = @[@"dpkg"];
-    }
-    else if ([[ZBDevice packageManagementBinary] isEqualToString:@"/usr/bin/apt"]) {
-        baseCommand = @[@"apt", @"-yqf", @"--allow-downgrades", @"--allow-change-held-packages", @"-oApt::Get::HideAutoRemove=true", @"-oquiet::NoProgress=true", @"-oquiet::NoStatistic=true", @"-oAPT::Sandbox::User=root", @"-oDir::State::lists="];
-    }
-    else {
-        baseCommand = @[@"apt", @"-yqf", @"--allow-downgrades", @"--allow-change-held-packages", @"-oApt::Get::HideAutoRemove=true", @"-oquiet::NoProgress=true", @"-oquiet::NoStatistic=true", @"-oAPT::Sandbox::User=root", @"-oDir::State::lists="];
-    }
-    
-    NSString *binary = baseCommand[0];
-
-    if ([self queueHasPackages:ZBQueueTypeRemove]) {
-        if ([self containsEssentialOrRequiredPackage]) { //We need to use dpkg to remove these packages, I haven't found a flag that will enable APT to do this
-            NSMutableArray *removeCommand = [@[@"dpkg", @"-r", @"--force-remove-essential"] mutableCopy];
-            
-            if (ignoreDependencies) {
-                [removeCommand addObject:@"--force-depends"];
-            }
-            
-            NSUInteger commandCount = [removeCommand count];
-            
-            for (ZBPackage *package in [self removeQueue]) {
-                if ([[package identifier] isEqualToString:@"xyz.willy.zebra"]) {
-                    removingZebra = YES;
-                    continue;
-                }
-                [removeCommand addObject:package.identifier];
-            }
-            
-            for (ZBPackage *package in [self conflictQueue]) {
-                if ([[package identifier] isEqualToString:@"xyz.willy.zebra"]) {
-                    removingZebra = YES;
-                    continue;
-                }
-                [removeCommand addObject:package.identifier];
-            }
-            
-            if ([removeCommand count] != commandCount) {
-                [commands addObject:@[@(ZBStageRemove)]];
-                [commands addObject:removeCommand];
-            }
-        }
-        else {
-            NSMutableArray *removeCommand = [baseCommand mutableCopy];
-            if ([binary isEqualToString:@"apt"]) {
-                [removeCommand addObject:@"remove"];
-            }
-            else {
-                [removeCommand addObject:@"-r"];
-                if (ignoreDependencies) {
-                    [removeCommand addObject:@"--force-depends"];
-                }
-            }
-            
-            NSUInteger commandCount = [removeCommand count];
-            
-            for (ZBPackage *package in [self removeQueue]) {
-                if ([[package identifier] isEqualToString:@"xyz.willy.zebra"]) {
-                    removingZebra = YES;
-                    continue;
-                }
-                [removeCommand addObject:package.identifier];
-            }
-            
-            for (ZBPackage *package in [self conflictQueue]) {
-                if ([[package identifier] isEqualToString:@"xyz.willy.zebra"]) {
-                    removingZebra = YES;
-                    continue;
-                }
-                [removeCommand addObject:package.identifier];
-            }
-            
-            if ([removeCommand count] != commandCount) {
-                [commands addObject:@[@(ZBStageRemove)]];
-                [commands addObject:removeCommand];
-            }
-        }
-    }
-    
-    BOOL installPackages   = [self queueHasPackages:ZBQueueTypeInstall];
-    BOOL upgradePackages   = [self queueHasPackages:ZBQueueTypeUpgrade];
-    BOOL downgradePackages = [self queueHasPackages:ZBQueueTypeDowngrade];
-    if (installPackages || upgradePackages || downgradePackages) {
-        NSMutableArray *installCommand = [baseCommand mutableCopy];
-        if ([binary isEqualToString:@"apt"]) {
-            [installCommand addObject:@"install"];
-        }
-        else {
-            [installCommand addObject:@"-i"];
-            if (ignoreDependencies) {
-                [installCommand addObject:@"--force-depends"];
-            }
-        }
-        
-        NSUInteger commandCount = [installCommand count];
-        
-        NSArray *dependencyPaths = [self pathsForPackagesInQueue:ZBQueueTypeDependency];
-        [installCommand addObjectsFromArray:dependencyPaths];
-        
-        if (installPackages) {
-            NSArray *paths = [self pathsForPackagesInQueue:ZBQueueTypeInstall];
-            [installCommand addObjectsFromArray:paths];
-        }
-        
-        if (upgradePackages) {
-            NSArray *paths = [self pathsForPackagesInQueue:ZBQueueTypeUpgrade];
-            [installCommand addObjectsFromArray:paths];
-        }
-        
-        if (downgradePackages) {
-            NSArray *paths = [self pathsForPackagesInQueue:ZBQueueTypeDowngrade];
-            [installCommand addObjectsFromArray:paths];
-        }
-        
-        if ([installCommand count] != commandCount) {
-            [commands addObject:@[@(ZBStageInstall)]];
-            [commands addObject:installCommand];
-        }
-    }
-    
-    if ([self queueHasPackages:ZBQueueTypeReinstall]) {
-        [commands addObject:@[@(ZBStageReinstall)]];
-        if ([binary isEqualToString:@"apt"]) {
-            NSMutableArray *reinstallCommand = [baseCommand mutableCopy];
-            [reinstallCommand addObject:@"install"];
-            [reinstallCommand addObject:@"--reinstall"];
-            
-            NSArray *paths = [self pathsForPackagesInQueue:ZBQueueTypeReinstall];
-            [reinstallCommand addObjectsFromArray:paths];
-            [commands addObject:reinstallCommand];
-        }
-        else if ([binary isEqualToString:@"dpkg"]) {
-            //Remove package first
-            NSMutableArray *removeCommand = [baseCommand mutableCopy];
-            
-            [removeCommand insertObject:@"-r" atIndex:1];
-            [removeCommand insertObject:@"--force-depends" atIndex:2];
-            for (ZBPackage *package in [self reinstallQueue]) {
-                [removeCommand addObject:package.identifier];
-            }
-            [commands addObject:removeCommand];
-            
-            //Install new version
-            NSMutableArray *installCommand = [baseCommand mutableCopy];
-            [installCommand insertObject:@"-i" atIndex:1];
-            NSArray *paths = [self pathsForPackagesInQueue:ZBQueueTypeReinstall];
-            [installCommand addObjectsFromArray:paths];
-            [commands addObject:installCommand];
-        }
-    }
-    
-    return commands;
-}
-
-- (NSArray <NSString *> *)pathsForPackagesInQueue:(ZBQueueType)queue {
-    NSMutableArray *result = [NSMutableArray new];
-    for (ZBPackage *package in [self queueFromType:queue]) {
-        if (package.debPath) {
-            if ([[package identifier] isEqualToString:@"xyz.willy.zebra"]) {
-                zebraPath = package.debPath;
-            }
-            else {
-                [result addObject:package.debPath];
-            }
-        }
-    }
-    return result;
-}
-
-- (NSMutableArray *)queueFromType:(ZBQueueType)queue {
-    return managedQueue[@(queue)];
-}
-
-- (BOOL)queueHasPackages:(ZBQueueType)queue {
-    if (queue == ZBQueueTypeRemove) {
-        return [managedQueue[@(queue)] count] || [[self conflictQueue] count];
-    }
-    else if (queue == ZBQueueTypeInstall) {
-        return [managedQueue[@(queue)] count] || [[self dependencyQueue] count];
-    }
-    else {
-        return [managedQueue[@(queue)] count];
-    }
-}
-
-- (NSArray <NSNumber *> *)actionsToPerform {
-    NSMutableArray *actions = [NSMutableArray new];
-    
-    for (ZBQueueType q = ZBQueueTypeInstall; q <= ZBQueueTypeDowngrade; q <<= 1) {
-        if (
-           managedQueue[@(q)].count
-           || (q == ZBQueueTypeInstall && [self dependencyQueue].count)
-           || (q == ZBQueueTypeRemove && [self conflictQueue].count)
-        ) {
-            [actions addObject:@(q)];
-        }
-    }
-
-    return actions;
-}
-
-- (int)numberOfPackagesInQueue:(ZBQueueType)queue {
-    return (int)[managedQueue[@(queue)] count];
-}
-
-- (BOOL)needsToDownloadPackages {
-    return [[self packagesToDownload] count] > 0;
-}
-
-- (NSArray *)packagesToDownload {
-    NSMutableArray *packages = [NSMutableArray new];
-    
-    for (ZBQueueType q = ZBQueueTypeInstall; q <= ZBQueueTypeDowngrade; q <<= 1) {
-        if (q == ZBQueueTypeRemove) continue;
-        for (ZBPackage *package in [self queueFromType:q]) {
-            if (!package.debPath) {
-                [packages addObject:package];
-            }
-        }
-    }
-    
-    [packages addObjectsFromArray:[self dependencyQueue]];
-    
-    return (NSArray *)packages;
-}
-
-- (NSArray *)packagesToInstall {
-    NSMutableArray *packages = [NSMutableArray new];
-    
-    for (ZBQueueType q = ZBQueueTypeInstall; q <= ZBQueueTypeDowngrade; q <<= 1) {
-        if (q == ZBQueueTypeRemove) continue;
-        for (ZBPackage *package in [self queueFromType:q]) {
-            if (package.debPath) {
-                [packages addObject:package];
-            }
-        }
-    }
-    
-    [packages addObjectsFromArray:[self dependencyQueue]];
-    
-    return (NSArray *)packages;
-}
-
-
-- (BOOL)contains:(ZBPackage *)package {
-    if ([queuedPackagesList containsObject:[package identifier]]) {
-        return YES;
-    }
-    
-    for (NSNumber *key in managedQueue) {
-        if ([managedQueue[key] containsObject:package]) {
-            return YES;
-        }
-    }
-    return NO;
-}
-
-- (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue {
-    if (queue == ZBQueueTypeClear || queue == 0) {
-        return [self contains:package];
-    }
-    else {
-        NSMutableArray *queueArray = [self queueFromType:queue];
-        if (!queueArray) return NO;
-        for (ZBPackage *p in queueArray) {
-            if ([p isEqual:package]) {
-                return YES;
-            }
-        }
-    }
-    return NO;
-}
-
-- (NSArray <NSArray <ZBPackage *> *> *)topDownQueue {
-    NSMutableArray *result = [NSMutableArray new];
-    for (NSArray *queueArray in [self queues]) {
-        NSMutableArray *topDownQueue = [queueArray mutableCopy];
-
-        if (queueArray == [self installQueue]) {
-            [topDownQueue addObjectsFromArray:[self dependencyQueue]];
-        } else if (queueArray == [self removeQueue]) {
-            [topDownQueue addObjectsFromArray:[self conflictQueue]];
-        }
-
-        if (topDownQueue.count) {
-            [result addObject:topDownQueue];
-        }
-    }
-    return result;
-}
-
-- (void)allDependenciesForPackage:(ZBPackage *)package dependencies:(NSMutableArray *)array {
-    if (![array containsObject:package]) {
-        [array addObject:package];
-        for (ZBPackage *dependency in [package dependencies]) {
-            [self allDependenciesForPackage:dependency dependencies:array];
-        }
-    }
-}
-
-- (NSString * _Nullable)downloadSizeForQueue:(ZBQueueType)queueType {
-    if (queueType == ZBQueueTypeClear || queueType == ZBQueueTypeRemove || queueType == ZBQueueTypeConflict || queueType == ZBQueueTypeDependency) return nil;
-    
-    double totalDownloadSize = 0;
-    NSMutableArray *packages = [[self queueFromType:queueType] mutableCopy];
-    if (queueType == ZBQueueTypeInstall) {
-        [packages addObjectsFromArray:[self dependencyQueue]];
-    }
-    
-    for (ZBPackage *package in packages) {
-        totalDownloadSize += [package downloadSize];
-    }
-    if (totalDownloadSize > 0) {
-        NSString *unit = @"bytes";
-        if (totalDownloadSize > 1024 * 1024) {
-            totalDownloadSize /= 1024 * 1024;
-            unit = @"MB";
-        }
-        else if (totalDownloadSize > 1024) {
-            totalDownloadSize /= 1024;
-            unit = @"KB";
-        }
-        return [NSString stringWithFormat:@"%.2f %@", totalDownloadSize, unit];
-    }
-    
-    return nil;
 }
 
 - (ZBQueueType)locate:(ZBPackage *)package {
-    return [self locatePackageID:[package identifier]];
-}
-
-- (ZBQueueType)locatePackageID:(NSString *)packageID {
-    for (NSNumber *key in managedQueue) {
-        for (ZBPackage *queuedPackage in managedQueue[key]) {
-            if ([packageID isEqualToString:[queuedPackage identifier]]) {
-                return key.intValue;
-            }
+    for (ZBQueueType queue = ZBQueueTypeInstall; queue <= ZBQueueTypeDependency; queue++) {
+        if ([[self queueForType:queue] containsObject:package]) {
+            return queue;
         }
     }
-    
-    return ZBQueueTypeClear;
+    return ZBQueueTypeNone;
 }
 
-- (NSArray <NSDictionary *> *)packagesQueuedForAdddition {
-    return [[self installedPackagesListExcluding:NULL] arrayByAddingObjectsFromArray:[self virtualPackagesListExcluding:NULL]];
-}
-
-- (NSArray <NSDictionary *> *)installedPackagesListExcluding:(ZBPackage *_Nullable)exclude {
-    NSMutableArray *result = [NSMutableArray new];
-    
-    for (ZBPackage *package in [self installQueue]) {
-        if ([package isEqual:exclude]) continue;
-        NSDictionary *dict = @{@"identifier": [package identifier], @"version": [package version]};
-        [result addObject:dict];
-    }
-    
-    for (ZBPackage *package in [self reinstallQueue]) {
-        if ([package isEqual:exclude]) continue;
-        NSDictionary *dict = @{@"identifier": [package identifier], @"version": [package version]};
-        [result addObject:dict];
-    }
-    
-    for (ZBPackage *package in [self upgradeQueue]) {
-        if ([package isEqual:exclude]) continue;
-        NSDictionary *dict = @{@"identifier": [package identifier], @"version": [package version]};
-        [result addObject:dict];
-    }
-    
-    for (ZBPackage *package in [self downgradeQueue]) {
-        if ([package isEqual:exclude]) continue;
-        NSDictionary *dict = @{@"identifier": [package identifier], @"version": [package version]};
-        [result addObject:dict];
-    }
-    
-    for (ZBPackage *package in [self dependencyQueue]) {
-        if ([package isEqual:exclude]) continue;
-        NSDictionary *dict = @{@"identifier": [package identifier], @"version": [package version]};
-        [result addObject:dict];
-    }
-    
-    return result;
-}
-
-- (NSArray <NSDictionary *> *)virtualPackagesListExcluding:(ZBPackage *_Nullable)exclude {
-    NSMutableArray *result = [NSMutableArray new];
-    
-    for (ZBPackage *package in [self installQueue]) {
-        if ([package isEqual:exclude]) continue;
-        for (NSString *virtualPackage in [package provides]) {
-            NSArray *components = [ZBDependencyResolver separateVersionComparison:virtualPackage];
-            NSDictionary *dict = @{@"identifier": components[0], @"version": components[2]};
-            [result addObject:dict];
-        }
-    }
-    
-    for (ZBPackage *package in [self reinstallQueue]) {
-        if ([package isEqual:exclude]) continue;
-        for (NSString *virtualPackage in [package provides]) {
-            NSArray *components = [ZBDependencyResolver separateVersionComparison:virtualPackage];
-            NSDictionary *dict = @{@"identifier": components[0], @"version": components[2]};
-            [result addObject:dict];
-        }
-    }
-    
-    for (ZBPackage *package in [self upgradeQueue]) {
-        if ([package isEqual:exclude]) continue;
-        for (NSString *virtualPackage in [package provides]) {
-            NSArray *components = [ZBDependencyResolver separateVersionComparison:virtualPackage];
-            NSDictionary *dict = @{@"identifier": components[0], @"version": components[2]};
-            [result addObject:dict];
-        }
-    }
-    
-    for (ZBPackage *package in [self downgradeQueue]) {
-        if ([package isEqual:exclude]) continue;
-        for (NSString *virtualPackage in [package provides]) {
-            NSArray *components = [ZBDependencyResolver separateVersionComparison:virtualPackage];
-            NSDictionary *dict = @{@"identifier": components[0], @"version": components[2]};
-            [result addObject:dict];
-        }
-    }
-    
-    for (ZBPackage *package in [self dependencyQueue]) {
-        if ([package isEqual:exclude]) continue;
-        for (NSString *virtualPackage in [package provides]) {
-            NSArray *components = [ZBDependencyResolver separateVersionComparison:virtualPackage];
-            NSDictionary *dict = @{@"identifier": components[0], @"version": components[2]};
-            [result addObject:dict];
-        }
-    }
-    
-    return result;
-}
-
-- (NSArray <NSString *> *)packageIDsQueuedForRemoval {
-    NSMutableArray *result = [NSMutableArray new];
-    for (ZBPackage *package in [self removeQueue]) {
-        [result addObject:[package identifier]];
-    }
-    
-    for (ZBPackage *package in [self conflictQueue]) {
-        [result addObject:[package identifier]];
-    }
-    return result;
-}
-
-- (BOOL)hasIssues {
-    return [[self issues] count];
-}
-
-- (NSArray <NSArray <NSString *> *> *)issues {
-    NSMutableArray *issues = [NSMutableArray new];
-    NSArray *topDownQueue = [self topDownQueue];
-    for (NSArray *queueArray in topDownQueue) {
-        for (ZBPackage *package in queueArray) {
-            if ([package hasIssues]) {
-                [issues addObjectsFromArray:[package issues]];
-            }
-        }
-    }
-    return issues;
-}
-
-- (BOOL)containsEssentialOrRequiredPackage {
-    NSMutableArray *removedPackages = [[self removeQueue] mutableCopy];
-    [removedPackages addObjectsFromArray:[self conflictQueue]];
-    for (ZBPackage *package in removedPackages) {
-        if ([package isEssentialOrRequired]) {
-            return YES;
-        }
-    }
-    return NO;
-}
-
-- (BOOL)containsPackageWithIgnoredDependencies {
-    NSArray *topDownQueue = [self topDownQueue];
-    for (NSArray *queueArray in topDownQueue) {
-        for (ZBPackage *package in queueArray) {
-            if ([package ignoreDependencies]) {
-                return YES;
-            }
-        }
-    }
-    return NO;
-}
-
-- (NSArray <NSMutableArray *> *)queues {
-    // The order must match those in ZBQueueType.h
-    return @[[self installQueue], [self removeQueue], [self reinstallQueue], [self upgradeQueue], [self downgradeQueue]];
-}
-
-- (NSMutableArray *)installQueue {
-    return managedQueue[@(ZBQueueTypeInstall)];
-}
-
-- (NSMutableArray *)reinstallQueue {
-    return managedQueue[@(ZBQueueTypeReinstall)];
-}
-
-- (NSMutableArray *)removeQueue {
-    return managedQueue[@(ZBQueueTypeRemove)];
-}
-
-- (NSMutableArray *)upgradeQueue {
-    return managedQueue[@(ZBQueueTypeUpgrade)];
-}
-
-- (NSMutableArray *)downgradeQueue {
-    return managedQueue[@(ZBQueueTypeDowngrade)];
-}
-
-- (NSMutableArray *)dependencyQueue {
-    return managedQueue[@(ZBQueueTypeDependency)];
-}
-
-- (NSMutableArray *)conflictQueue {
-    return managedQueue[@(ZBQueueTypeConflict)];
-}
-
-- (NSString * _Nullable)displayableNameForQueueType:(ZBQueueType)queue {
-    switch (queue) {
+- (NSMutableArray *)queueForType:(ZBQueueType)queue {
+    switch(queue) {
         case ZBQueueTypeInstall:
-        case ZBQueueTypeDependency:
-            return NSLocalizedString(@"Install", @"");
-        case ZBQueueTypeConflict:
+            return installQueue;
         case ZBQueueTypeRemove:
-            return NSLocalizedString(@"Remove", @"");
+            return removeQueue;
         case ZBQueueTypeReinstall:
-            return NSLocalizedString(@"Reinstall", @"");
+            return reinstallQueue;
         case ZBQueueTypeUpgrade:
-            return NSLocalizedString(@"Upgrade", @"");
+            return upgradeQueue;
         case ZBQueueTypeDowngrade:
-            return NSLocalizedString(@"Downgrade", @"");
-        default:
-            return nil;
-    }
-}
-
-+ (UIColor * _Nullable)colorForQueueType:(ZBQueueType)queue {
-    switch (queue) {
+            return downgradeQueue;
         case ZBQueueTypeDependency:
-        case ZBQueueTypeInstall:
-            return [UIColor systemTealColor];
+            return dependencyQueue;
         case ZBQueueTypeConflict:
-        case ZBQueueTypeRemove:
-            return [UIColor systemPinkColor];
-        case ZBQueueTypeReinstall:
-            return [UIColor systemOrangeColor];
-        case ZBQueueTypeUpgrade:
-            return [UIColor systemBlueColor];
-        case ZBQueueTypeDowngrade:
-            return [UIColor systemPurpleColor];
+            return conflictQueue;
         default:
-            return nil;
+            return NULL;
     }
 }
 

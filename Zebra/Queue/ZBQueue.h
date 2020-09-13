@@ -6,52 +6,33 @@
 //  Copyright © 2019 Wilson Styres. All rights reserved.
 //
 
-@class UIColor;
+@import Foundation;
+@import CoreGraphics;
+
 @class ZBPackage;
 
-@import Foundation;
-#import <Queue/ZBQueueType.h>
+typedef NS_ENUM(NSUInteger, ZBQueueType) {
+    ZBQueueTypeNone,
+    ZBQueueTypeInstall,
+    ZBQueueTypeRemove,
+    ZBQueueTypeReinstall,
+    ZBQueueTypeUpgrade,
+    ZBQueueTypeDowngrade,
+    ZBQueueTypeConflict,
+    ZBQueueTypeDependency
+};
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface ZBQueue : NSObject
-@property BOOL removingZebra;
-@property (nonatomic, strong) NSString *zebraPath;
-@property (nonatomic, strong) NSMutableArray<NSString *> *queuedPackagesList;
-+ (id)sharedQueue;
-+ (int)count;
-+ (UIColor * _Nullable)colorForQueueType:(ZBQueueType)queue;
-- (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue;
-- (void)addPackages:(NSArray <ZBPackage *> *)packages toQueue:(ZBQueueType)queue;
-- (void)addDependency:(ZBPackage *)package;
-- (void)addConflict:(ZBPackage *)package;
-- (void)removePackage:(ZBPackage *)package;
-- (NSArray *)tasksToPerform;
-- (NSMutableArray *)queueFromType:(ZBQueueType)queue;
-- (NSArray <NSNumber *> *)actionsToPerform;
-- (NSString * _Nullable)displayableNameForQueueType:(ZBQueueType)queue;
-- (int)numberOfPackagesInQueue:(ZBQueueType)queue;
-- (BOOL)needsToDownloadPackages;
-- (NSArray *)packagesToDownload;
-- (NSArray *)packagesToInstall;
-- (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue;
-- (NSArray <NSArray <ZBPackage *> *> *)topDownQueue;
-- (NSString * _Nullable)downloadSizeForQueue:(ZBQueueType)queueType;
-- (BOOL)hasIssues;
-- (NSArray <NSArray <NSString *> *> *)issues;
-- (void)clear;
-- (NSMutableArray *)dependencyQueue;
-- (NSMutableArray *)conflictQueue;
-- (NSMutableArray <NSString *> *)queuedPackagesList;
+@property (readonly) unsigned long long count;
+@property (readonly) unsigned long long downloadsRemaining;
+@property (readonly) CGFloat downloadProgress;
++ (instancetype)sharedQueue;
+- (void)add:(ZBPackage *)package to:(ZBQueueType)queue;
+- (void)remove:(ZBPackage *)package;
+- (void)remove:(ZBPackage *)package from:(ZBQueueType)queue;
 - (ZBQueueType)locate:(ZBPackage *)package;
-- (ZBQueueType)locatePackageID:(NSString *)packageID;
-- (BOOL)containsEssentialOrRequiredPackage;
-- (void)addConflict:(ZBPackage *)package removeDependencies:(BOOL)remove;
-
-- (NSArray <NSDictionary *> *)packagesQueuedForAdddition;
-- (NSArray <NSDictionary *> *)installedPackagesListExcluding:(ZBPackage *_Nullable)exclude;
-- (NSArray <NSDictionary *> *)virtualPackagesListExcluding:(ZBPackage *_Nullable)exclude;
-- (NSArray <NSString *> *)packageIDsQueuedForRemoval;
 @end
 
 NS_ASSUME_NONNULL_END
