@@ -8,6 +8,8 @@
 
 #import "ZBQueue.h"
 
+#import <ZBAppDelegate.h>
+#import <ZBDevice.h>
 #import <Downloads/ZBDownloadManager.h>
 #import <Tabs/Packages/Helpers/ZBPackage.h>
 
@@ -81,7 +83,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         case ZBQueueTypeDependency:
             if (![package debPath]) { // Packages that are already downloaded will have debPath set
                 [packagesToDownload addObject:package];
-                [downloadManager downloadPackages:@[package]];
+                if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [downloadManager downloadPackages:@[package]];
             }
         case ZBQueueTypeRemove:
         case ZBQueueTypeConflict: {
@@ -146,6 +148,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 - (void)startedPackageDownload:(ZBPackage *)package {
     NSLog(@"[Zebra] Started download for package %@", package);
+    [ZBAppDelegate sendErrorToTabController:[NSString stringWithFormat:@"Started download %@", package]];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
@@ -154,6 +157,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
     NSLog(@"[Zebra] Finished download for package %@", package);
+    [ZBAppDelegate sendErrorToTabController:[NSString stringWithFormat:@"Finished download %@", package]];
 }
 
 #pragma mark - Helper Methods
