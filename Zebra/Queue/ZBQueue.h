@@ -10,6 +10,7 @@
 @import CoreGraphics;
 
 @class ZBPackage;
+@class UIColor;
 
 typedef NS_ENUM(NSUInteger, ZBQueueType) {
     ZBQueueTypeNone,
@@ -33,6 +34,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)remove:(ZBPackage *)package;
 - (void)remove:(ZBPackage *)package from:(ZBQueueType)queue;
 - (ZBQueueType)locate:(ZBPackage *)package;
+- (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (NSString *)displayableNameForQueueType:(ZBQueueType)queue;
++ (UIColor *)colorForQueueType:(ZBQueueType)queue;
 @end
 
 NS_ASSUME_NONNULL_END

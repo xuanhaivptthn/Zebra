@@ -170,7 +170,7 @@
 
 - (void)updateQueueBar {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self updateQueueBarPackageCount:[ZBQueue count]];
+        [self updateQueueBarPackageCount:[[ZBQueue sharedQueue] count]];
         
         LNPopupPresentationState state = self.popupPresentationState;
         if (state != LNPopupPresentationStateOpen && state != LNPopupPresentationStateTransitioning) {
@@ -220,7 +220,8 @@
         
         UIAlertAction *yesAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Yes", @"") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
             
-            [[ZBQueue sharedQueue] clear];
+            // TODO: Reimplement clear
+//            [[ZBQueue sharedQueue] clear];
         }];
         [clearQueue addAction:yesAction];
         

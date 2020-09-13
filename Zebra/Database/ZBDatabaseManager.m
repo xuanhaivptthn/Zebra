@@ -1925,7 +1925,7 @@
 
                 if (packageNeedsToBeRemoved) {
                     ZBPackage *found = [[ZBPackage alloc] initWithSQLiteStatement:statement];
-                    if ([[ZBQueue sharedQueue] locate:found] == ZBQueueTypeClear) {
+                    if ([[ZBQueue sharedQueue] locate:found] == ZBQueueTypeNone) {
                         [found setRemovedBy:package];
 
                         [packages addObject:found];
@@ -2019,81 +2019,81 @@
             }
         }
     }
-    else if ([self openDatabase] == SQLITE_OK) {
-        ZBQueue *queue = [ZBQueue sharedQueue];
-        NSArray *addedPackages =   [queue packagesQueuedForAdddition]; //Packages that are being installed, upgraded, removed, downgraded, etc. (dependencies as well)
-        NSArray *removedPackages = [queue packageIDsQueuedForRemoval]; //Just packageIDs that are queued for removal (conflicts as well)
-        
-        NSArray *versionComponents = [ZBDependencyResolver separateVersionComparison:dependency];
-        NSString *packageIdentifier = versionComponents[0];
-        BOOL needsVersionComparison = ![versionComponents[1] isEqualToString:@"<=>"] && ![versionComponents[2] isEqualToString:@"0:0"];
-        
-        NSString *excludeString = [self excludeStringFromArray:removedPackages];
-        const char *firstSearchTerm = [[NSString stringWithFormat:@"%%, %@ (%%", packageIdentifier] UTF8String];
-        const char *secondSearchTerm = [[NSString stringWithFormat:@"%%, %@, %%", packageIdentifier] UTF8String];
-        const char *thirdSearchTerm = [[NSString stringWithFormat:@"%@ (%%", packageIdentifier] UTF8String];
-        const char *fourthSearchTerm = [[NSString stringWithFormat:@"%@, %%", packageIdentifier] UTF8String];
-        const char *fifthSearchTerm = [[NSString stringWithFormat:@"%%, %@", packageIdentifier] UTF8String];
-        const char *sixthSearchTerm = [[NSString stringWithFormat:@"%%| %@", packageIdentifier] UTF8String];
-        const char *seventhSearchTerm = [[NSString stringWithFormat:@"%%, %@ |%%", packageIdentifier] UTF8String];
-        const char *eighthSearchTerm = [[NSString stringWithFormat:@"%@ |%%", packageIdentifier] UTF8String];
-        
-        NSString *query = [NSString stringWithFormat:@"SELECT VERSION FROM PACKAGES WHERE PACKAGE NOT IN %@ AND REPOID = 0 AND (PACKAGE = ? OR (PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ?)) LIMIT 1;", excludeString];
-        
-        BOOL found = NO;
-        sqlite3_stmt *statement = NULL;
-        if (sqlite3_prepare_v2(database, [query UTF8String], -1, &statement, nil) == SQLITE_OK) {
-            sqlite3_bind_text(statement, 1, [packageIdentifier UTF8String], -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 2, firstSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 3, secondSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 4, thirdSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 5, fourthSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 6, fifthSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 7, sixthSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 8, seventhSearchTerm, -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(statement, 9, eighthSearchTerm, -1, SQLITE_TRANSIENT);
-            
-            while (sqlite3_step(statement) == SQLITE_ROW) {
-                if (needsVersionComparison) {
-                    const char* foundVersion = (const char*)sqlite3_column_text(statement, 0);
-                    
-                    if (foundVersion != 0) {
-                        if ([ZBDependencyResolver doesVersion:[NSString stringWithUTF8String:foundVersion] satisfyComparison:versionComponents[1] ofVersion:versionComponents[2]]) {
-                            found = YES;
-                            break;
-                        }
-                    }
-                }
-                else {
-                    found = YES;
-                    break;
-                }
-            }
-            
-            if (!found) { //Search the array of packages that are queued for installation to see if one of them satisfies the dependency
-                for (NSDictionary *package in addedPackages) {
-                    if ([[package objectForKey:@"identifier"] isEqualToString:packageIdentifier]) {
-                        // TODO: Condition check here is useless
-//                        if (needsVersionComparison && [ZBDependencyResolver doesVersion:[package objectForKey:@"version"] satisfyComparison:versionComponents[1] ofVersion:versionComponents[2]]) {
-//                            return YES;
+//    else if ([self openDatabase] == SQLITE_OK) {
+//        ZBQueue *queue = [ZBQueue sharedQueue];
+//        NSArray *addedPackages =   [queue packagesQueuedForAdddition]; //Packages that are being installed, upgraded, removed, downgraded, etc. (dependencies as well)
+//        NSArray *removedPackages = [queue packageIDsQueuedForRemoval]; //Just packageIDs that are queued for removal (conflicts as well)
+//        
+//        NSArray *versionComponents = [ZBDependencyResolver separateVersionComparison:dependency];
+//        NSString *packageIdentifier = versionComponents[0];
+//        BOOL needsVersionComparison = ![versionComponents[1] isEqualToString:@"<=>"] && ![versionComponents[2] isEqualToString:@"0:0"];
+//        
+//        NSString *excludeString = [self excludeStringFromArray:removedPackages];
+//        const char *firstSearchTerm = [[NSString stringWithFormat:@"%%, %@ (%%", packageIdentifier] UTF8String];
+//        const char *secondSearchTerm = [[NSString stringWithFormat:@"%%, %@, %%", packageIdentifier] UTF8String];
+//        const char *thirdSearchTerm = [[NSString stringWithFormat:@"%@ (%%", packageIdentifier] UTF8String];
+//        const char *fourthSearchTerm = [[NSString stringWithFormat:@"%@, %%", packageIdentifier] UTF8String];
+//        const char *fifthSearchTerm = [[NSString stringWithFormat:@"%%, %@", packageIdentifier] UTF8String];
+//        const char *sixthSearchTerm = [[NSString stringWithFormat:@"%%| %@", packageIdentifier] UTF8String];
+//        const char *seventhSearchTerm = [[NSString stringWithFormat:@"%%, %@ |%%", packageIdentifier] UTF8String];
+//        const char *eighthSearchTerm = [[NSString stringWithFormat:@"%@ |%%", packageIdentifier] UTF8String];
+//        
+//        NSString *query = [NSString stringWithFormat:@"SELECT VERSION FROM PACKAGES WHERE PACKAGE NOT IN %@ AND REPOID = 0 AND (PACKAGE = ? OR (PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ? OR PROVIDES LIKE ?)) LIMIT 1;", excludeString];
+//        
+//        BOOL found = NO;
+//        sqlite3_stmt *statement = NULL;
+//        if (sqlite3_prepare_v2(database, [query UTF8String], -1, &statement, nil) == SQLITE_OK) {
+//            sqlite3_bind_text(statement, 1, [packageIdentifier UTF8String], -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 2, firstSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 3, secondSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 4, thirdSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 5, fourthSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 6, fifthSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 7, sixthSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 8, seventhSearchTerm, -1, SQLITE_TRANSIENT);
+//            sqlite3_bind_text(statement, 9, eighthSearchTerm, -1, SQLITE_TRANSIENT);
+//            
+//            while (sqlite3_step(statement) == SQLITE_ROW) {
+//                if (needsVersionComparison) {
+//                    const char* foundVersion = (const char*)sqlite3_column_text(statement, 0);
+//                    
+//                    if (foundVersion != 0) {
+//                        if ([ZBDependencyResolver doesVersion:[NSString stringWithUTF8String:foundVersion] satisfyComparison:versionComponents[1] ofVersion:versionComponents[2]]) {
+//                            found = YES;
+//                            break;
 //                        }
-                        return YES;
-                    }
-                }
-                return NO;
-            }
-            
-            sqlite3_finalize(statement);
-            [self closeDatabase];
-            return found;
-        } else {
-            [self printDatabaseError];
-        }
-        [self closeDatabase];
-    }
-    else {
-        [self printDatabaseError];
-    }
+//                    }
+//                }
+//                else {
+//                    found = YES;
+//                    break;
+//                }
+//            }
+//            
+//            if (!found) { //Search the array of packages that are queued for installation to see if one of them satisfies the dependency
+//                for (NSDictionary *package in addedPackages) {
+//                    if ([[package objectForKey:@"identifier"] isEqualToString:packageIdentifier]) {
+//                        // TODO: Condition check here is useless
+////                        if (needsVersionComparison && [ZBDependencyResolver doesVersion:[package objectForKey:@"version"] satisfyComparison:versionComponents[1] ofVersion:versionComponents[2]]) {
+////                            return YES;
+////                        }
+//                        return YES;
+//                    }
+//                }
+//                return NO;
+//            }
+//            
+//            sqlite3_finalize(statement);
+//            [self closeDatabase];
+//            return found;
+//        } else {
+//            [self printDatabaseError];
+//        }
+//        [self closeDatabase];
+//    }
+//    else {
+//        [self printDatabaseError];
+//    }
     return NO;
 }
 

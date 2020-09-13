@@ -187,25 +187,25 @@
     }
     else if ([dependency containsString:@"("] || [dependency containsString:@")"]) { //There is a version dependency here
         NSArray *components = [ZBDependencyResolver separateVersionComparison:dependency];
-        if ([[queue queuedPackagesList] containsObject:components[0]]) {
-            ZBPackage *queuedDependency = [self packageInDependencyQueue:components[0]];
-            if (queuedDependency != nil) {
-                [self enqueueDependency:queuedDependency forPackage:package ignoreFurtherDependencies:YES];
-            }
-            return YES;
-        }
+//        if ([[queue queuedPackagesList] containsObject:components[0]]) {
+//            ZBPackage *queuedDependency = [self packageInDependencyQueue:components[0]];
+//            if (queuedDependency != nil) {
+//                [self enqueueDependency:queuedDependency forPackage:package ignoreFurtherDependencies:YES];
+//            }
+//            return YES;
+//        }
         
         //We should now have a separate version and a comparison string
         return [self isPackageInstalled:components[0] thatSatisfiesComparison:components[1] ofVersion:components[2]];
     }
     else { //We should just be left as a package ID at this point, lets search for it in the database
-        if ([[queue queuedPackagesList] containsObject:dependency]) {
-            ZBPackage *queuedDependency = [self packageInDependencyQueue:dependency];
-            if (queuedDependency != nil) {
-                [self enqueueDependency:queuedDependency forPackage:package ignoreFurtherDependencies:YES];
-            }
-            return YES;
-        }
+//        if ([[queue queuedPackagesList] containsObject:dependency]) {
+//            ZBPackage *queuedDependency = [self packageInDependencyQueue:dependency];
+//            if (queuedDependency != nil) {
+//                [self enqueueDependency:queuedDependency forPackage:package ignoreFurtherDependencies:YES];
+//            }
+//            return YES;
+//        }
         
         return [self isPackageInstalled:dependency];
     }
@@ -294,8 +294,8 @@
 - (void)populateLists { //Populates a list of packages that are installed and a list of virtual packages of which the installed packages provide.
     NSDictionary *packageList = [databaseManager installedPackagesList];
     
-    installedPackagesList = [[packageList objectForKey:@"installed"] arrayByAddingObjectsFromArray:[queue installedPackagesListExcluding:self->package]];
-    virtualPackagesList = [[packageList objectForKey:@"virtual"] arrayByAddingObjectsFromArray:[queue virtualPackagesListExcluding:self->package]];
+//    installedPackagesList = [[packageList objectForKey:@"installed"] arrayByAddingObjectsFromArray:[queue installedPackagesListExcluding:self->package]];
+//    virtualPackagesList = [[packageList objectForKey:@"virtual"] arrayByAddingObjectsFromArray:[queue virtualPackagesListExcluding:self->package]];
 }
 
 - (BOOL)isPackageInstalled:(NSString *)packageIdentifier {
@@ -340,7 +340,7 @@
     NSLog(@"[Zebra] Adding %@ as a dependency for %@", dependency, package);
     [package addDependency:dependency];
     [dependency addDependencyOf:package];
-    [queue addDependency:dependency];
+//    [queue addDependency:dependency];
     
     return ignore || [self calculateDependenciesForPackage:dependency];
 }
@@ -350,15 +350,15 @@
     [package addDependency:conflict];
     [conflict addDependencyOf:package];
     [conflict setRemovedBy:package];
-    [queue addConflict:conflict removeDependencies:![self isPackage:conflict providedBy:package]];
+//    [queue addConflict:conflict removeDependencies:![self isPackage:conflict providedBy:package]];
 }
 
 - (ZBPackage * _Nullable)packageInDependencyQueue:(NSString *)packageID {
-    for (ZBPackage *package in [queue dependencyQueue]) {
-        if ([[package identifier] isEqual:packageID]) {
-            return package;
-        }
-    }
+//    for (ZBPackage *package in [queue dependencyQueue]) {
+//        if ([[package identifier] isEqual:packageID]) {
+//            return package;
+//        }
+//    }
     return nil;
 }
 

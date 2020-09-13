@@ -9,7 +9,6 @@
 @class ZBPackage;
 @import UIKit;
 @import Foundation;
-#import <Queue/ZBQueueType.h>
 #import <Extensions/UIBarButtonItem+blocks.h>
 
 #import "ZBPackageActionType.h"

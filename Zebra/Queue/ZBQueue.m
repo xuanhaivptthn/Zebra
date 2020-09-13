@@ -8,7 +8,7 @@
 
 #import "ZBQueue.h"
 
-#import <Tabs/Packages/Helpers/ZBPackage.h>
+#import <Tabs/Packages/Helpers/ZBPackage.h> 
 
 @interface ZBQueue () {
     NSMutableArray *installQueue;
@@ -21,6 +21,8 @@
     NSMutableArray *packagesToDownload;
 }
 @end
+
+NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 @implementation ZBQueue
 
@@ -61,7 +63,7 @@
     return packagesToDownload.count;
 }
 
-#pragma mark - Adding to the Queue
+#pragma mark - Queue Management
 
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue {
     if (queue == ZBQueueTypeNone) return;
@@ -72,13 +74,21 @@
         case ZBQueueTypeUpgrade:
         case ZBQueueTypeDowngrade:
         case ZBQueueTypeDependency:
-            [packagesToDownload addObject:package];
+            if (![package debPath]) { // Packages that are already downloaded will have debPath set
+                [packagesToDownload addObject:package];
+            }
         case ZBQueueTypeRemove:
-        case ZBQueueTypeConflict:
-            [[self queueForType:queue] addObject:package];
+        case ZBQueueTypeConflict: {
+            NSMutableArray *array = [self queueForType:queue];
+            if (![array containsObject:package]) {
+                [array addObject:package];
+            }
+        }
         default:
             break;
     }
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
 - (void)remove:(ZBPackage *)package {
@@ -101,6 +111,8 @@
         default:
             break;
     }
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
 - (ZBQueueType)locate:(ZBPackage *)package {
@@ -111,6 +123,12 @@
     }
     return ZBQueueTypeNone;
 }
+
+- (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    return [[self queueForType:queue] containsObject:package];
+}
+
+#pragma mark - Helper Methods
 
 - (NSMutableArray *)queueForType:(ZBQueueType)queue {
     switch(queue) {
@@ -130,6 +148,44 @@
             return conflictQueue;
         default:
             return NULL;
+    }
+}
+
+- (NSString *)displayableNameForQueueType:(ZBQueueType)queue {
+    switch (queue) {
+        case ZBQueueTypeInstall:
+        case ZBQueueTypeDependency:
+            return NSLocalizedString(@"Install", @"");
+        case ZBQueueTypeConflict:
+        case ZBQueueTypeRemove:
+            return NSLocalizedString(@"Remove", @"");
+        case ZBQueueTypeReinstall:
+            return NSLocalizedString(@"Reinstall", @"");
+        case ZBQueueTypeUpgrade:
+            return NSLocalizedString(@"Upgrade", @"");
+        case ZBQueueTypeDowngrade:
+            return NSLocalizedString(@"Downgrade", @"");
+        default:
+            return NULL;
+    }
+}
+
++ (UIColor *)colorForQueueType:(ZBQueueType)queue {
+    switch (queue) {
+        case ZBQueueTypeDependency:
+        case ZBQueueTypeInstall:
+            return [UIColor systemTealColor];
+        case ZBQueueTypeConflict:
+        case ZBQueueTypeRemove:
+            return [UIColor systemPinkColor];
+        case ZBQueueTypeReinstall:
+            return [UIColor systemOrangeColor];
+        case ZBQueueTypeUpgrade:
+            return [UIColor systemBlueColor];
+        case ZBQueueTypeDowngrade:
+            return [UIColor systemPurpleColor];
+        default:
+            return nil;
     }
 }
 

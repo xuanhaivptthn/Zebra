@@ -227,7 +227,8 @@
             continue;
         [installablePackages addObject:package];
     }
-    [[ZBQueue sharedQueue] addPackages:installablePackages toQueue:ZBQueueTypeInstall];
+    //TODO: Reimplement
+//    [[ZBQueue sharedQueue] addPackages:installablePackages toQueue:ZBQueueTypeInstall];
 }
 
 - (void)sharePackages {
@@ -273,12 +274,12 @@
 }
 
 - (void)upgradeAll {
-    NSUInteger beforeCount = [ZBQueue count];
+    NSUInteger beforeCount = [[ZBQueue sharedQueue] count];
     
     [ZBPackageActions performAction:ZBPackageActionUpgrade forPackages:updates completion:^{
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.tableView reloadRowsAtIndexPaths:[self.tableView indexPathsForVisibleRows] withRowAnimation:UITableViewRowAnimationNone];
-            NSUInteger afterCount = [ZBQueue count];
+            NSUInteger afterCount = [[ZBQueue sharedQueue] count];
             if (beforeCount == afterCount) {
                 [[ZBAppDelegate tabBarController] openQueue:YES];
             }

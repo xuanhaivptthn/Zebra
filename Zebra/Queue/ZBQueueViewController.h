@@ -11,7 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface ZBQueueViewController : ZBTableViewController
-- (id)init;
+
 @end
 
 NS_ASSUME_NONNULL_END
