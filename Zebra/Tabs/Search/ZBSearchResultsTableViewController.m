@@ -120,9 +120,9 @@
     [[self navController] pushViewController:[self getPackageDepictionVC:indexPath] animated:YES];
 }
 
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    return ![[ZBAppDelegate tabBarController] isQueueBarAnimating];
-}
+//- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
+//    return ![[ZBAppDelegate tabBarController] isQueueBarAnimating];
+//}
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     id quantumPackage = filteredResults[indexPath.row];

@@ -79,9 +79,9 @@
     }
 }
 
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    return ![[ZBAppDelegate tabBarController] isQueueBarAnimating];
-}
+//- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
+//    return ![[ZBAppDelegate tabBarController] isQueueBarAnimating];
+//}
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
     ZBPackage *package = moreByAuthor[indexPath.row];

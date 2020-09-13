@@ -53,6 +53,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         downgradeQueue = [NSMutableArray new];
         dependencyQueue = [NSMutableArray new];
         conflictQueue = [NSMutableArray new];
+        packagesToDownload = [NSMutableArray new];
         
         downloadManager = [[ZBDownloadManager alloc] initWithDownloadDelegate:self];
     }
@@ -63,7 +64,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 #pragma mark - Properties
 
 - (unsigned long long)count {
-    return installQueue.count + removeQueue.count + dependencyQueue.count + conflictQueue.count;
+    return installQueue.count + removeQueue.count + reinstallQueue.count + upgradeQueue.count + downgradeQueue.count + dependencyQueue.count + conflictQueue.count;
 }
 
 - (unsigned long long)downloadsRemaining {
@@ -148,7 +149,8 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 - (void)startedPackageDownload:(ZBPackage *)package {
     NSLog(@"[Zebra] Started download for package %@", package);
-    [ZBAppDelegate sendErrorToTabController:[NSString stringWithFormat:@"Started download %@", package]];
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
@@ -157,7 +159,9 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
     NSLog(@"[Zebra] Finished download for package %@", package);
-    [ZBAppDelegate sendErrorToTabController:[NSString stringWithFormat:@"Finished download %@", package]];
+    
+    [packagesToDownload removeObject:package];
+    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
 #pragma mark - Helper Methods

@@ -25,15 +25,11 @@
 @interface ZBTabBarController () {
     ZBSourceManager *sourceManager;
     UIActivityIndicatorView *sourceRefreshIndicator;
+    UINavigationController *queueController;
 }
-
-@property (nonatomic) UINavigationController *popupController;
-@property (nonatomic, readonly) ZBQueueViewController *queueController;
 @end
 
 @implementation ZBTabBarController
-@synthesize queueController = _queueController;
-@synthesize popupController = _popupController;
 
 @synthesize forwardedSourceBaseURL;
 @synthesize forwardToPackageID;
@@ -53,6 +49,8 @@
         
         sourceRefreshIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:12];
         sourceRefreshIndicator.color = [UIColor whiteColor];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueueBar) name:@"ZBQueueUpdate" object:nil];
     }
     
     return self;
@@ -152,46 +150,23 @@
 
 #pragma mark - Queue Popup Bar
 
-- (UINavigationController *)popupController {
-    if (!_popupController) {
-        _popupController = [[UINavigationController alloc] initWithRootViewController:self.queueController];
-    }
-    
-    return _popupController;
-}
-
-- (ZBQueueViewController *)queueController {
-    if (!_queueController) {
-        _queueController = [ZBQueueViewController new];
-    }
-    
-    return _queueController;
-}
-
 - (void)updateQueueBar {
+    if (!queueController)
+        queueController = [[UINavigationController alloc] initWithRootViewController:[ZBQueueViewController new]];
+    
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self updateQueueBarPackageCount:[[ZBQueue sharedQueue] count]];
+        unsigned long long queueCount = [[ZBQueue sharedQueue] count];
+        unsigned long long downloadsRemaining = [[ZBQueue sharedQueue] downloadsRemaining];
+        if (downloadsRemaining) {
+            self->queueController.popupItem.title = [NSString stringWithFormat:@"%llu Packages Queued", queueCount];
+            self->queueController.popupItem.subtitle = [NSString stringWithFormat:@"%llu packages downloading", queueCount - downloadsRemaining];
+        }
+        else {
+            self->queueController.popupItem.title = [NSString stringWithFormat:@"%llu Packages Queued", queueCount];
+            self->queueController.popupItem.subtitle = @"Tap to manage";
+        }
         
-        LNPopupPresentationState state = self.popupPresentationState;
-        if (state != LNPopupPresentationStateOpen && state != LNPopupPresentationStateTransitioning) {
-            [self openQueue:NO];
-        }
-        else {
-            [[self popupBar] setNeedsLayout];
-        }
-    });
-}
-
-- (void)updateQueueBarPackageCount:(int)count {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (count > 0) {
-            self.popupController.popupItem.title = count > 1 ? [NSString stringWithFormat:NSLocalizedString(@"%d Packages Queued", @""), count] : [NSString stringWithFormat:NSLocalizedString(@"%d Package Queued", @""), count];
-            self.popupController.popupItem.subtitle = NSLocalizedString(@"Tap to manage", @"");
-        }
-        else {
-            self.popupController.popupItem.title = NSLocalizedString(@"No Packages Queued", @"");
-            self.popupController.popupItem.subtitle = nil;
-        }
+        [self presentPopupBarWithContentViewController:self->queueController animated:YES completion:nil];
     });
 }
 
@@ -210,7 +185,7 @@
         longPress.delegate = self;
         
         [self.popupBar addGestureRecognizer:longPress];
-        [self presentPopupBarWithContentViewController:self.popupController openPopup:openPopup animated:YES completion:nil];
+//        [self presentPopupBarWithContentViewController:self.popupController openPopup:openPopup animated:YES completion:nil];
     });
 }
 
@@ -231,23 +206,6 @@
         [self presentViewController:clearQueue animated:YES completion:nil];
     }
     
-}
-
-- (BOOL)isQueueBarAnimating {
-    return self.popupPresentationState == LNPopupPresentationStateTransitioning;
-}
-
-- (void)closeQueue {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        LNPopupPresentationState state = self.popupPresentationState;
-        if (state == LNPopupPresentationStateOpen || state == LNPopupPresentationStateTransitioning || state == LNPopupPresentationStateClosed) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"ZBDatabaseCompletedUpdate" object:nil];
-            [self dismissPopupBarAnimated:YES completion:^{
-                self.popupController = nil;
-                [[NSNotificationCenter defaultCenter] postNotificationName:@"ZBUpdateNavigationButtons" object:nil];
-            }];
-        }
-    });
 }
 
 @end
