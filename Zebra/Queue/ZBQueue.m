@@ -8,7 +8,8 @@
 
 #import "ZBQueue.h"
 
-#import <Tabs/Packages/Helpers/ZBPackage.h> 
+#import <Downloads/ZBDownloadManager.h>
+#import <Tabs/Packages/Helpers/ZBPackage.h>
 
 @interface ZBQueue () {
     NSMutableArray *installQueue;
@@ -19,6 +20,8 @@
     NSMutableArray *dependencyQueue;
     NSMutableArray *conflictQueue;
     NSMutableArray *packagesToDownload;
+    
+    ZBDownloadManager *downloadManager;
 }
 @end
 
@@ -48,6 +51,8 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         downgradeQueue = [NSMutableArray new];
         dependencyQueue = [NSMutableArray new];
         conflictQueue = [NSMutableArray new];
+        
+        downloadManager = [[ZBDownloadManager alloc] initWithDownloadDelegate:self];
     }
     
     return self;
@@ -76,6 +81,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         case ZBQueueTypeDependency:
             if (![package debPath]) { // Packages that are already downloaded will have debPath set
                 [packagesToDownload addObject:package];
+                [downloadManager downloadPackages:@[package]];
             }
         case ZBQueueTypeRemove:
         case ZBQueueTypeConflict: {
@@ -126,6 +132,28 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 - (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue {
     return [[self queueForType:queue] containsObject:package];
+}
+
+#pragma mark - Download Delegate
+
+- (void)startedDownloads {
+    NSLog(@"[Zebra] Started downloads");
+}
+
+- (void)finishedAllDownloads {
+    NSLog(@"[Zebra] Finished All Downloads");
+}
+
+- (void)startedPackageDownload:(ZBPackage *)package {
+    NSLog(@"[Zebra] Started download for package %@", package);
+}
+
+- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
+    NSLog(@"[Zebra] %@ Progress: %f", package, progress);
+}
+
+- (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
+    NSLog(@"[Zebra] Finished download for package %@", package);
 }
 
 #pragma mark - Helper Methods

@@ -9,6 +9,8 @@
 @import Foundation;
 @import CoreGraphics;
 
+#import <Downloads/ZBDownloadDelegate.h>
+
 @class ZBPackage;
 @class UIColor;
 
@@ -25,7 +27,7 @@ typedef NS_ENUM(NSUInteger, ZBQueueType) {
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ZBQueue : NSObject
+@interface ZBQueue : NSObject <ZBDownloadDelegate>
 @property (readonly) unsigned long long count;
 @property (readonly) unsigned long long downloadsRemaining;
 @property (readonly) CGFloat downloadProgress;
