@@ -13,6 +13,13 @@
 #import <UIKit/UIApplication.h>
 #import <Console/ZBConsoleCommandDelegate.h>
 
+typedef enum {
+    ZBConnectionTypeUnknown,
+    ZBConnectionTypeNone,
+    ZBConnectionTypeCellular,
+    ZBConnectionTypeWiFi
+} ZBConnectionType;
+
 @interface UIApplication ()
 - (void)suspend;
 @end
@@ -56,5 +63,7 @@
 + (NSDictionary *_Nonnull)depictionHeaders;
 
 + (NSString *_Nonnull)jailbreakType;
+
++ (ZBConnectionType)connectionType;
 
 @end

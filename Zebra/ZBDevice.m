@@ -20,12 +20,14 @@
 #import <sys/types.h>
 #import <sys/stat.h>
 #import <unistd.h>
+#import <netinet/in.h>
 
 @import SafariServices;
 @import LNPopupController;
 @import FirebaseCrashlytics;
 @import Foundation;
 @import SafariServices;
+@import SystemConfiguration;
 
 @implementation ZBDevice
 
@@ -456,6 +458,32 @@
     }
     
     return jailbreak;
+}
+
++ (ZBConnectionType)connectionType {
+    struct sockaddr_in zeroAddress;
+    bzero(&zeroAddress, sizeof(zeroAddress));
+    zeroAddress.sin_len = sizeof(zeroAddress);
+    zeroAddress.sin_family = AF_INET;
+    
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, (const struct sockaddr *) &zeroAddress);
+    SCNetworkReachabilityFlags flags;
+    BOOL success = SCNetworkReachabilityGetFlags(reachability, &flags);
+    CFRelease(reachability);
+    if (!success) {
+        return ZBConnectionTypeUnknown;
+    }
+    BOOL isReachable = ((flags & kSCNetworkReachabilityFlagsReachable) != 0);
+    BOOL needsConnection = ((flags & kSCNetworkReachabilityFlagsConnectionRequired) != 0);
+    BOOL isNetworkReachable = (isReachable && !needsConnection);
+    
+    if (!isNetworkReachable) {
+        return ZBConnectionTypeNone;
+    } else if ((flags & kSCNetworkReachabilityFlagsIsWWAN) != 0) {
+        return ZBConnectionTypeCellular;
+    } else {
+        return ZBConnectionTypeWiFi;
+    }
 }
 
 @end
