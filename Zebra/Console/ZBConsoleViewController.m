@@ -21,7 +21,6 @@
 #import <Extensions/UIColor+GlobalColors.h>
 #import <Theme/ZBThemeManager.h>
 #import <Extensions/UIFont+Zebra.h>
-#import <Headers/NSTask.h>
 
 #include <sysexits.h>
 
@@ -436,7 +435,7 @@
         if (applicationBundlePaths.count > 1) {
             [self updateIconCaches];
         } else {
-            [ZBDevice uicache:@[@"-p", @"/Applications/Zebra.app"] observer:self];
+            [ZBDevice uicache:@[@"/Applications/Zebra.app"]];
         }
     }
 }
@@ -453,11 +452,9 @@
 
 - (void)updateIconCaches {
     [self writeToConsole:NSLocalizedString(@"Updating icon cache asynchronously...", @"") atLevel:ZBLogLevelInfo];
-    NSMutableArray *arguments = [NSMutableArray arrayWithObject:@"-p"];
-    [arguments addObjectsFromArray:applicationBundlePaths];
     
     if (![ZBDevice needsSimulation]) {
-        [ZBDevice uicache:arguments observer:self];
+        [ZBDevice uicache:applicationBundlePaths];
     } else {
         [self writeToConsole:NSLocalizedString(@"uicache is not available on the simulator", @"") atLevel:ZBLogLevelWarning];
     }
@@ -700,32 +697,19 @@
 
 #pragma mark - Command Delegate
 
-- (void)receivedData:(NSNotification *)notif {
-    NSFileHandle *fh = [notif object];
-    NSData *data = [fh availableData];
-
-    if (data.length) {
-        [fh waitForDataInBackgroundAndNotify];
-        NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        [self writeToConsole:str atLevel:ZBLogLevelDescript];
-    }
+- (void)receivedData:(NSString *)data {
+    [self writeToConsole:data atLevel:ZBLogLevelDescript];
 }
 
-- (void)receivedErrorData:(NSNotification *)notif {
-    NSFileHandle *fh = [notif object];
-    NSData *data = [fh availableData];
+- (void)receivedErrorData:(NSString *)data {
+    if ([data containsString:@"stable CLI interface"]) return;
+    if ([data containsString:@"postinst"]) return;
 
-    if (data.length) {
-        [fh waitForDataInBackgroundAndNotify];
-        NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        if ([str containsString:@"stable CLI interface"]) return;
-        if ([str containsString:@"postinst"]) return;
-        [[FIRCrashlytics crashlytics] logWithFormat:@"DPKG/APT Error: %@", str];
-        if ([str rangeOfString:@"warning"].location != NSNotFound || [str hasPrefix:@"W:"]) {
-            [self writeToConsole:str atLevel:ZBLogLevelWarning];
-        } else {
-            [self writeToConsole:str atLevel:ZBLogLevelError];
-        }
+    [[FIRCrashlytics crashlytics] logWithFormat:@"DPKG/APT Error: %@", data];
+    if ([data rangeOfString:@"warning"].location != NSNotFound || [data hasPrefix:@"W:"]) {
+        [self writeToConsole:data atLevel:ZBLogLevelWarning];
+    } else {
+        [self writeToConsole:data atLevel:ZBLogLevelError];
     }
 }
 
@@ -777,14 +761,9 @@
     [self writeToConsole:NSLocalizedString(@"Importing local packages.", @"") atLevel:ZBLogLevelInfo];
 }
 
-- (void)databaseCompletedUpdate:(int)packageUpdates {
+- (void)databaseCompletedUpdate {
     blockDatabaseMessages = NO;
     [self writeToConsole:NSLocalizedString(@"Finished importing local packages.", @"") atLevel:ZBLogLevelInfo];
-//    if (packageUpdates != -1) {
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//            [[ZBAppDelegate tabBarController] setPackageUpdateBadgeValue:packageUpdates];
-//        });
-//    }
 }
 
 @end

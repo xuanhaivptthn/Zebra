@@ -12,6 +12,7 @@
 
 #import <ZBAppDelegate.h>
 #import <ZBDevice.h>
+#import <ZBSettings.h>
 
 #import <Extensions/UIColor+GlobalColors.h>
 #import <Extensions/UIAlertController+Zebra.h>
@@ -53,7 +54,6 @@
         filteredSources = [sources copy];
         hasProblems = NO;
         withProblems = 0;
-        self.tableView.tableHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, self.tableView.bounds.size.width, 0)];
     }
     
     return self;
@@ -64,10 +64,6 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.navigationItem.leftBarButtonItem = self.editButtonItem;
-    addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(presentAddView)];
-    self.navigationItem.rightBarButtonItem = addButton;
-    
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBSourceTableViewCell" bundle:nil] forCellReuseIdentifier:@"sourceCell"];
 }
 
@@ -75,6 +71,24 @@
     [super viewWillAppear:animated];
     
     sources = [sourceManager.sources mutableCopy];
+}
+
+- (void)layoutNavigationButtonsRefreshing {
+    [super layoutNavigationButtonsRefreshing];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.navigationItem.rightBarButtonItem = nil;
+    });
+}
+
+- (void)layoutNavigationButtonsNormal {
+    [super layoutNavigationButtonsNormal];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.navigationItem.leftBarButtonItem = self.editButtonItem;
+        self->addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(presentAddView)];
+        self.navigationItem.rightBarButtonItem = self->addButton;
+    });
 }
 
 - (void)viewWillLayoutSubviews {
@@ -255,6 +269,11 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (hasProblems && indexPath.section == 0) {
+        [tableView deselectRowAtIndexPath:indexPath animated:YES];
+        return;
+    }
+    
     ZBSource *source = filteredSources[indexPath.row];
     if (!self.editing) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -300,10 +319,50 @@
         
             switch (error.code) {
                 case ZBSourceWarningInsecure: {
-                    // TODO: Implement somehow, we need to check to see if the source actually supports https before switching it
-//                    UIAlertAction *switchAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Switch to HTTPS", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-//                    }];
-//                    [alert addAction:switchAction];
+                    UIAlertAction *switchAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Switch to HTTPS", @"") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                        NSString *secureURIString = [@"https" stringByAppendingString:[source.repositoryURI substringFromIndex:4]];
+                        ZBBaseSource *secureBaseSource = [[ZBBaseSource alloc] initFromURL:[NSURL URLWithString:secureURIString]];
+                        
+                        [secureBaseSource verify:^(ZBSourceVerificationStatus status) {
+                            if (status == ZBSourceExists) {
+                                NSString *oldURI = source.repositoryURI;
+                                source.repositoryURI = secureURIString;
+                                
+                                [[ZBSourceManager sharedInstance] updateURIForSource:source oldURI:oldURI error:nil];
+                                
+                                NSMutableArray *mutableWarnings = [source.warnings mutableCopy];
+                                [mutableWarnings removeObject:error];
+                                source.warnings = mutableWarnings;
+                                
+                                dispatch_async(dispatch_get_main_queue(), ^{
+                                    [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+                                });
+                            }
+                            else if (status == ZBSourceVerifying) {
+                                [(ZBSourceTableViewCell *)[self.tableView cellForRowAtIndexPath:indexPath] setSpinning:YES];
+                            }
+                            else if (status == ZBSourceImaginary) {
+                                [(ZBSourceTableViewCell *)[self.tableView cellForRowAtIndexPath:indexPath] setSpinning:NO];
+                                
+                                NSString *message = [NSString stringWithFormat:NSLocalizedString(@"Unable to locate a secure HTTPS version of %@ or the request timed out. The insecure HTTP version will be used instead.", @""), source.origin];
+                                UIAlertController *stayInsecureAlert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Unable to switch", @"") message:message preferredStyle:UIAlertControllerStyleAlert];
+                                
+                                UIAlertAction *removeAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Remove Source", @"") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+                                    dispatch_async(dispatch_get_main_queue(), ^{
+                                        [self->sourceManager removeSources:[NSSet setWithObject:source] error:nil];
+                                    });
+                                }];
+                                [stayInsecureAlert addAction:removeAction];
+                                
+                                UIAlertAction *continueAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Close", @"") style:UIAlertActionStyleCancel handler:nil];
+                                [stayInsecureAlert addAction:continueAction];
+                                dispatch_async(dispatch_get_main_queue(), ^{
+                                    [self presentViewController:stayInsecureAlert animated:YES completion:nil];
+                                });
+                            }
+                        }];
+                    }];
+                    [alert addAction:switchAction];
                     
                     UIAlertAction *continueAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Close", @"") style:UIAlertActionStyleCancel handler:nil];
                     [alert addAction:continueAction];
@@ -344,7 +403,9 @@
         completionHandler(YES);
     }];
     
-    copyAction.image = [UIImage imageNamed:@"doc_fill"];
+    if ([ZBSettings swipeActionStyle] == ZBSwipeActionStyleIcon) {
+        copyAction.image = [UIImage imageNamed:@"doc_fill"];
+    }
     copyAction.backgroundColor = [UIColor systemTealColor];
     
     return [UISwipeActionsConfiguration configurationWithActions:@[copyAction]];
@@ -361,7 +422,9 @@
             
             completionHandler(error == NULL);
         }];
-        deleteAction.image = [UIImage imageNamed:@"delete_left"];
+        if ([ZBSettings swipeActionStyle] == ZBSwipeActionStyleIcon) {
+            deleteAction.image = [UIImage imageNamed:@"delete_left"];
+        }
         [actions addObject:deleteAction];
     }
     
@@ -369,7 +432,9 @@
         [self->sourceManager refreshSources:[NSSet setWithArray:@[source]] useCaching:NO error:nil];
         completionHandler(YES);
     }];
-    refreshAction.image = [UIImage imageNamed:@"arrow_clockwise"];
+    if ([ZBSettings swipeActionStyle] == ZBSwipeActionStyleIcon) {
+        refreshAction.image = [UIImage imageNamed:@"arrow_clockwise"];
+    }
     [actions addObject:refreshAction];
     
     return [UISwipeActionsConfiguration configurationWithActions:actions];
@@ -399,6 +464,10 @@
 // To add padding, we're updating the frame of an empty UIView, which is set as the UITableView's tableHeaderView.
 // When the UISearchController is presented, we set the height to 16px. When it's dismissed, we update set height to 0px.
 - (void)hideTableViewHeaderView:(BOOL)hidden {
+    if (!self.tableView.tableHeaderView) {
+        self.tableView.tableHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, self.tableView.bounds.size.width, 0.0)]; // We have to setup the header here because otherwise the navigation bar won't use large titles (for some reason)
+    }
+    
     CGRect updatedFrame = self.tableView.tableHeaderView.frame;
     updatedFrame.size.height = hidden ? CGFLOAT_MIN : 16;
     [self.tableView beginUpdates];
@@ -421,43 +490,58 @@
 #pragma mark - ZBSourceDelegate
 
 - (void)startedDownloadForSource:(ZBBaseSource *)source {
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:(ZBSource *)source] inSection:self->hasProblems];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-    });
+    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+    if (index != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
 }
 
 - (void)finishedDownloadForSource:(ZBBaseSource *)source {
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:(ZBSource *)source] inSection:self->hasProblems];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-    });
+    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+    if (index != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
 }
 
 - (void)startedImportForSource:(ZBBaseSource *)source {
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:(ZBSource *)source] inSection:self->hasProblems];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-    });
+    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+    if (index != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
 }
 
 - (void)finishedImportForSource:(ZBBaseSource *)source {
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSIndexPath *oldIndexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:(ZBSource *)source] inSection:self->hasProblems];
-        
-        self->sources = [self->sourceManager.sources mutableCopy];
-        [self filterSourcesForSearchTerm:self->searchController.searchBar.text];
-        
-        NSIndexPath *newIndexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:(ZBSource *)source] inSection:self->hasProblems];
-        
-        if ([oldIndexPath isEqual:newIndexPath]) {
-            [self.tableView reloadRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-        }
-        else {
-            [self.tableView beginUpdates];
-            [self.tableView deleteRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-            [self.tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-            [self.tableView endUpdates];
+        NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+        if (index != NSNotFound) {
+            NSIndexPath *oldIndexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+            
+            self->sources = [self->sourceManager.sources mutableCopy];
+            [self filterSourcesForSearchTerm:self->searchController.searchBar.text];
+            
+            NSUInteger newIndex = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+            if (newIndex != NSNotFound) {
+                NSIndexPath *newIndexPath = [NSIndexPath indexPathForRow:newIndex inSection:self->hasProblems];
+                
+                if ([oldIndexPath isEqual:newIndexPath]) {
+                    [self.tableView reloadRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+                }
+                else {
+                    [self.tableView beginUpdates];
+                    [self.tableView deleteRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+                    [self.tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+                    [self.tableView endUpdates];
+                }
+            }
         }
     });
 }
@@ -483,24 +567,30 @@
     
     NSMutableArray *indexPaths = [NSMutableArray new];
     for (ZBSource *source in sources) {
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:source] inSection:self->hasProblems];
-        [indexPaths addObject:indexPath];
+        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
+        if (index != NSNotFound) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+            [indexPaths addObject:indexPath];
+        }
     }
     
-    [self.tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+    if (indexPaths.count) [self.tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
 }
 
 - (void)removedSources:(NSSet<ZBBaseSource *> *)sources {
     NSMutableArray *indexPaths = [NSMutableArray new];
     for (ZBSource *source in sources) {
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[self->filteredSources indexOfObject:source] inSection:self->hasProblems];
-        [indexPaths addObject:indexPath];
+        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
+        if (index != NSNotFound) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+            [indexPaths addObject:indexPath];
+        }
     }
     
     self->sources = [sourceManager.sources mutableCopy];
     [self filterSourcesForSearchTerm:searchController.searchBar.text];
     
-    [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+    if (indexPaths.count) [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
     
     dispatch_async(dispatch_get_main_queue(), ^{
         NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
@@ -512,6 +602,10 @@
             [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
         }
     });
+}
+
+- (void)scrollToTop {
+    [self.tableView scrollRectToVisible:CGRectMake(0, 0, 1, 1) animated:YES];
 }
 
 @end

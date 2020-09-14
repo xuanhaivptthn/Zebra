@@ -20,6 +20,7 @@
 
 @interface ZBSourceManager () {
     BOOL recachingNeeded;
+    ZBDatabaseManager *databaseManager;
     ZBDownloadManager *downloadManager;
     NSMutableArray <id <ZBSourceDelegate>> *delegates;
     NSMutableDictionary *busyList;
@@ -47,6 +48,9 @@
     self = [super init];
     
     if (self) {
+        databaseManager = [ZBDatabaseManager sharedInstance];
+        [databaseManager addDatabaseDelegate:self];
+        
         recachingNeeded = YES;
         refreshInProgress = NO;
     }
@@ -139,6 +143,29 @@
     }
 }
 
+- (void)updateURIForSource:(ZBSource *)source oldURI:(NSString *)oldURI error:(NSError**_Nullable)error {
+    if (source != nil) {
+        NSSet *sourcesToWrite = [ZBBaseSource baseSourcesFromList:[ZBAppDelegate sourcesListURL] error:nil];
+
+        for (ZBBaseSource *baseSource in sourcesToWrite) {
+            if ([oldURI isEqualToString:baseSource.repositoryURI]) {
+                baseSource.repositoryURI = [source.repositoryURI copy];
+                break;
+            }
+        }
+
+        NSError *writeError = NULL;
+        [self writeBaseSources:sourcesToWrite toFile:[ZBAppDelegate sourcesListPath] error:&writeError];
+        if (writeError) {
+            NSLog(@"[Zebra] Error while writing sources to file: %@", writeError);
+            *error = writeError;
+            return;
+        }
+
+        [[ZBDatabaseManager sharedInstance] updateURIForSource:source];
+    }
+}
+
 - (void)removeSources:(NSSet <ZBBaseSource *> *)sources error:(NSError**_Nullable)error {
     NSMutableSet *sourcesToRemove = [sources mutableCopy];
     for (ZBSource *source in sources) {
@@ -212,9 +239,11 @@
         }
     }
     
-    if (requested || needsRefresh || [ZBDatabaseManager needsMigration]) {
-        [self refreshSources:[NSSet setWithArray:self.sources] useCaching:YES error:nil];
-    }
+    [databaseManager checkForPackageUpdates];
+    NSMutableSet *sourcesToRefresh = [NSMutableSet setWithObject:[ZBSource localSource]];
+    if (requested || needsRefresh || [ZBDatabaseManager needsMigration]) [sourcesToRefresh addObjectsFromArray:self.sources];
+    
+    [self refreshSources:sourcesToRefresh useCaching:YES error:nil];
 }
 
 - (void)refreshSources:(NSSet <ZBBaseSource *> *)sources useCaching:(BOOL)caching error:(NSError **_Nullable)error {
@@ -309,7 +338,6 @@
         [warnings addObject:insecureError];
     }
     
-    NSLog(@"%@", source.mainDirectoryURL.host);
     if ([self checkForInvalidRepo:source.mainDirectoryURL]) {
         NSError *insecureError = [NSError errorWithDomain:ZBSourceErrorDomain code:ZBSourceWarningIncompatible userInfo:@{
             NSLocalizedDescriptionKey: NSLocalizedString(@"Incompatible Source", @""),
@@ -328,23 +356,23 @@
 - (BOOL)checkForInvalidRepo:(NSURL *)baseURL {
     NSString *host = [baseURL host];
     
-    if (YES || [ZBDevice isOdyssey]) { // odyssey
-        return ([host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.bingner.com"]);
+    if ([ZBDevice isOdyssey]) { // odyssey
+        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.bingner.com"]);
     }
     if ([ZBDevice isCheckrain]) { // checkra1n
-        return ([host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"repo.chimera.sh"]);
+        return ([host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.procurs.us"]);
     }
     if ([ZBDevice isChimera]) { // chimera
-        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"apt.bingner.com"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"]);
+        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"apt.bingner.com"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"apt.procurs.us"]);
     }
     if ([ZBDevice isUncover]) { // uncover
-        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"]);
+        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"apt.procurs.us"]);
     }
     if ([ZBDevice isElectra]) { // electra
-        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"apt.bingner.com"]);
+        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"apt.saurik.com"] || [host isEqualToString:@"apt.bingner.com"] || [host isEqualToString:@"apt.procurs.us"]);
     }
     if ([[NSFileManager defaultManager] fileExistsAtPath:@"/Applications/Cydia.app"]) { // cydia
-        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"apt.bingner.com"]);
+        return ([host isEqualToString:@"checkra.in"] || [host isEqualToString:@"repo.chimera.sh"] || [host isEqualToString:@"electrarepo64.coolstar.org"] || [host isEqualToString:@"apt.bingner.com"] || [host isEqualToString:@"apt.procurs.us"]);
     }
     
     return NO;
@@ -393,8 +421,6 @@
     ZBLog(@"[Zebra](ZBSourceManager) Finished all downloads");
     downloadManager = NULL;
     
-    ZBDatabaseManager *databaseManager = [ZBDatabaseManager sharedInstance];
-    [databaseManager addDatabaseDelegate:self];
     [databaseManager parseSources:completedSources];
 }
 
@@ -406,32 +432,44 @@
 
 - (void)startedImportingSource:(ZBBaseSource *)source {
     ZBLog(@"[Zebra](ZBSourceManager) Started parsing %@", source);
-    [busyList setObject:@YES forKey:source.baseFilename];
-    [self bulkStartedImportForSource:source];
+    if (source) {
+        [busyList setObject:@YES forKey:source.baseFilename];
+        [self bulkStartedImportForSource:source];
+    }
 }
 
 - (void)finishedImportingSource:(ZBSource *)source error:(NSError *)error {
     ZBLog(@"[Zebra](ZBSourceManager) Finished parsing %@", source);
-    [busyList setObject:@NO forKey:source.baseFilename];
-    
-    NSMutableArray *mutableSources = [_sources mutableCopy];
-    [mutableSources replaceObjectAtIndex:[mutableSources indexOfObject:source] withObject:source];
-    _sources = [mutableSources sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"label" ascending:TRUE selector:@selector(localizedCaseInsensitiveCompare:)]]];
-    
-    if (error) {
-        source.errors = source.errors ? [source.errors arrayByAddingObject:error] : @[error];
+    if (source) {
+        [busyList setObject:@NO forKey:source.baseFilename];
+        
+        NSMutableArray *mutableSources = [_sources mutableCopy];
+        NSUInteger index = [mutableSources indexOfObject:source];
+        if (index < mutableSources.count) {
+            [mutableSources replaceObjectAtIndex:index withObject:source];
+        }
+        _sources = [mutableSources sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"label" ascending:TRUE selector:@selector(localizedCaseInsensitiveCompare:)]]];
+        
+        if (error) {
+            source.errors = source.errors ? [source.errors arrayByAddingObject:error] : @[error];
+        }
+        source.warnings = [self warningsForSource:source];
+        
+        [self bulkFinishedImportForSource:source];
     }
-    source.warnings = [self warningsForSource:source];
-    
-    [self bulkFinishedImportForSource:source];
 }
 
-- (void)databaseCompletedUpdate:(int)packageUpdates {
+- (void)databaseCompletedUpdate {
     ZBLog(@"[Zebra](ZBSourceManager) Finished parsing sources");
     refreshInProgress = NO;
     busyList = NULL;
     completedSources = NULL;
+    [databaseManager checkForPackageUpdates];
     [self bulkFinishedSourceRefresh];
+}
+
+- (void)packageUpdatesAvailable:(int)numberOfUpdates {
+    [self bulkUpdatesAvailable:numberOfUpdates];
 }
 
 #pragma mark - Source Delegate Notifiers
@@ -497,6 +535,14 @@
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(removedSources:)]) {
             [delegate removedSources:sources];
+        }
+    }
+}
+
+- (void)bulkUpdatesAvailable:(int)numberOfUpdates {
+    for (NSObject <ZBSourceDelegate> *delegate in delegates) {
+        if ([delegate respondsToSelector:@selector(updatesAvailable:)]) {
+            [delegate updatesAvailable:numberOfUpdates];
         }
     }
 }

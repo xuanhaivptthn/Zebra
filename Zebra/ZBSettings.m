@@ -51,6 +51,8 @@ NSString *const WishlistKey = @"Wishlist";
 
 NSString *const PackageSortingTypeKey = @"PackageSortingType";
 
+NSString *const AllowsCrashReportingKey = @"AllowsCrashReporting";
+
 + (void)load {
     [super load];
     
@@ -445,7 +447,7 @@ NSString *const PackageSortingTypeKey = @"PackageSortingType";
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     
     if (![defaults objectForKey:SourceTimeoutKey]) {
-        [self setSourceRefreshTimeout:@(5)];
+        [self setSourceRefreshTimeout:@5];
         return 5;
     }
     return [defaults integerForKey:SourceTimeoutKey];
@@ -587,6 +589,28 @@ NSString *const PackageSortingTypeKey = @"PackageSortingType";
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     
     [defaults setInteger:sortingType forKey:PackageSortingTypeKey];
+}
+
+#pragma mark - Crash Reporting
+
++ (BOOL)allowsCrashReporting {
+#if DEBUG
+    return NO;
+#else
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    if (![defaults objectForKey:AllowsCrashReportingKey]) {
+        [self setAllowsCrashReporting:YES];
+        return YES;
+    }
+    return [defaults boolForKey:AllowsCrashReportingKey];
+#endif
+}
+
++ (void)setAllowsCrashReporting:(BOOL)crashReporting {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    [defaults setBool:crashReporting forKey:AllowsCrashReportingKey];
 }
 
 @end
