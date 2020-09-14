@@ -151,20 +151,16 @@
 
 - (void)updateQueueBar {
     if (!queueController)
-        queueController = [[UINavigationController alloc] initWithRootViewController:[ZBQueueViewController new]];
+        queueController = [ZBQueueViewController new];
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        unsigned long long queueCount = [[ZBQueue sharedQueue] count];
-        if (queueCount == 1) {
-            self->queueController.popupItem.title = NSLocalizedString(@"1 Package Queued", @"");
-            
+        if (self.popupPresentationState == LNPopupPresentationStateBarPresented) {
+            self.popupBar.popupItem.title = self->queueController.popupItem.title;
+            self.popupBar.popupItem.subtitle = self->queueController.popupItem.subtitle;
         }
         else {
-            self->queueController.popupItem.title = [NSString stringWithFormat:NSLocalizedString(@"%llu Packages Queued", @""), queueCount];
+            [self presentPopupBarWithContentViewController:self->queueController animated:YES completion:nil];
         }
-        self->queueController.popupItem.subtitle = NSLocalizedString(@"Tap to manage", @"");
-        
-        [self presentPopupBarWithContentViewController:self->queueController animated:YES completion:nil];
     });
 }
 
