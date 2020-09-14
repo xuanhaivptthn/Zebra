@@ -12,6 +12,7 @@
 #import <sys/stat.h>
 #import <sys/utsname.h>
 #import <sys/sysctl.h>
+#include <netinet/in.h>
 #import <Headers/MobileGestalt.h>
 #import <Extensions/UIColor+GlobalColors.h>
 #import <Theme/ZBThemeManager.h>

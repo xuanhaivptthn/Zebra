@@ -179,7 +179,7 @@
 + (void)reinstall:(ZBPackage *)package completion:(void (^)(void))completion {
     ZBPackage *candidate = [[ZBDatabaseManager sharedInstance] packageForID:package.identifier equalVersion:package.installedVersion];
     if (candidate) {
-        [[ZBQueue sharedQueue] addPackage:candidate toQueue:ZBQueueTypeReinstall];
+        [[ZBQueue sharedQueue] add:candidate to:ZBQueueTypeReinstall];
     }
     if (completion) completion();
 }

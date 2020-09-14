@@ -155,15 +155,14 @@
     
     dispatch_async(dispatch_get_main_queue(), ^{
         unsigned long long queueCount = [[ZBQueue sharedQueue] count];
-        unsigned long long downloadsRemaining = [[ZBQueue sharedQueue] downloadsRemaining];
-        if (downloadsRemaining) {
-            self->queueController.popupItem.title = [NSString stringWithFormat:@"%llu Packages Queued", queueCount];
-            self->queueController.popupItem.subtitle = [NSString stringWithFormat:@"%llu packages downloading", queueCount - downloadsRemaining];
+        if (queueCount == 1) {
+            self->queueController.popupItem.title = NSLocalizedString(@"1 Package Queued", @"");
+            
         }
         else {
-            self->queueController.popupItem.title = [NSString stringWithFormat:@"%llu Packages Queued", queueCount];
-            self->queueController.popupItem.subtitle = @"Tap to manage";
+            self->queueController.popupItem.title = [NSString stringWithFormat:NSLocalizedString(@"%llu Packages Queued", @""), queueCount];
         }
+        self->queueController.popupItem.subtitle = NSLocalizedString(@"Tap to manage", @"");
         
         [self presentPopupBarWithContentViewController:self->queueController animated:YES completion:nil];
     });
