@@ -154,13 +154,8 @@
         queueController = [ZBQueueViewController new];
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.popupPresentationState == LNPopupPresentationStateBarPresented) {
-            self.popupBar.popupItem.title = self->queueController.popupItem.title;
-            self.popupBar.popupItem.subtitle = self->queueController.popupItem.subtitle;
-        }
-        else {
-            [self presentPopupBarWithContentViewController:self->queueController animated:YES completion:nil];
-        }
+        self.popupContentView.popupCloseButtonStyle = LNPopupCloseButtonStyleNone;
+        [self presentPopupBarWithContentViewController:self->queueController animated:YES completion:nil];
     });
 }
 

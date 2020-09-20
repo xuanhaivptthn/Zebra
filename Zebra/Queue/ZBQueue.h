@@ -30,6 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ZBQueue : NSObject <ZBDownloadDelegate>
 @property (readonly) unsigned long long count;
 @property (readonly) unsigned long long downloadsRemaining;
+@property (readonly) BOOL downloading;
 @property (readonly) CGFloat downloadProgress;
 + (instancetype)sharedQueue;
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue;

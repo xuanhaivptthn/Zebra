@@ -71,6 +71,10 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return packagesToDownload.count;
 }
 
+- (BOOL)isDownloading {
+    return self.downloadsRemaining > 0;
+}
+
 #pragma mark - Queue Management
 
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue {
@@ -139,13 +143,9 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 #pragma mark - Download Delegate
 
-- (void)startedDownloads {
-    NSLog(@"[Zebra] Started downloads");
-}
+- (void)startedDownloads {}
 
-- (void)finishedAllDownloads {
-    NSLog(@"[Zebra] Finished All Downloads");
-}
+- (void)finishedAllDownloads {}
 
 - (void)startedPackageDownload:(ZBPackage *)package {
     NSLog(@"[Zebra] Started download for package %@", package);
