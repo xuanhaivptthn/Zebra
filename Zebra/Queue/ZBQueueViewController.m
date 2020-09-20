@@ -11,12 +11,14 @@
 #import "ZBQueue.h"
 #import "ZBQueueTableViewCell.h"
 
+#import <Tabs/Packages/Helpers/ZBPackage.h>
 #import <Tabs/Packages/Views/ZBBoldTableViewHeaderView.h>
 
 @import LNPopupController;
 
 @interface ZBQueueViewController () {
     ZBQueue *queue;
+    NSArray <NSArray <ZBPackage *> *> *packagesQueued;
 }
 @end
 
@@ -30,11 +32,12 @@
     if (self) {
         self.title = NSLocalizedString(@"Queue", @"");
         queue = [ZBQueue sharedQueue];
+        packagesQueued = queue.packages;
         
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueueBar) name:@"ZBQueueUpdate" object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueue) name:@"ZBQueueUpdate" object:nil];
     }
     
-    return [[UINavigationController alloc] initWithRootViewController:self];
+    return self;
 }
 
 - (void)dealloc {
@@ -46,14 +49,20 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    [[UITableView appearance] setBackgroundColor:[UIColor whiteColor]];
+    [self.tableView setTableFooterView:[UIView new]];
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBQueueTableViewCell" bundle:nil] forCellReuseIdentifier:@"queueTableViewCell"];
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBBoldTableViewHeaderView" bundle:nil] forHeaderFooterViewReuseIdentifier:@"BoldTableViewHeaderView"];
 }
 
 #pragma mark - Popup Bar Management
 
-- (void)updateQueueBar {
+- (void)updateQueue {
+    packagesQueued = queue.packages;
+    
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self.tableView reloadData];
+        
         unsigned long long queueCount = [[ZBQueue sharedQueue] count];
         if (queueCount > 0) {
             if (queueCount == 1) {
@@ -71,30 +80,74 @@
 }
 
 #pragma mark - Table View Data Source
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSLog(@"%ld %ld", (long)indexPath.row, (long)indexPath.section);
+}
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return 1;
+    return packagesQueued.count;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return 1;
+    return packagesQueued[section].count;
 }
 
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+- (ZBQueueTableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     ZBQueueTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"queueTableViewCell"];
+    ZBPackage *package = packagesQueued[indexPath.section][indexPath.row];
     
-    cell.iconView.image = [UIImage imageNamed:@"Tweaks"];
-    cell.packageNameLabel.text = @"NoBlur";
+    cell.packageNameLabel.text = package.name;
     cell.statusLabel.text = @"Ready to install";
-    cell.progressView.progress = 0.2;
     
+    [package setIconImageForImageView:cell.iconView];
     return cell;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    ZBBoldTableViewHeaderView *cell = [tableView dequeueReusableHeaderFooterViewWithIdentifier:@"BoldTableViewHeaderView"];
-    cell.titleLabel.text = NSLocalizedString(@"Install", @"");
-    return cell;
+    if ([tableView numberOfRowsInSection:section] != 0) {
+        ZBBoldTableViewHeaderView *cell = [tableView dequeueReusableHeaderFooterViewWithIdentifier:@"BoldTableViewHeaderView"];
+        cell.titleLabel.text = [self titleForHeaderInSection:section];
+        return cell;
+    }
+    return nil;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    return [tableView numberOfRowsInSection:section] != 0 ? UITableViewAutomaticDimension : 0;
+}
+
+- (NSString *)titleForHeaderInSection:(NSInteger)section {
+    return [queue displayableNameForQueueType:section + 1];
+}
+
+#pragma mark - Queue Delegate
+
+- (void)packages:(NSArray<ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
+    });
+}
+
+- (void)progress:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    NSLog(@"%@ Progress: %f", package.name, progress);
+    if (queue == ZBQueueTypeNone) return;
+    
+    NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
+    if (row != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            ZBQueueTableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"queueTableViewCell" forIndexPath:indexPath];
+            NSLog(@"cell %@", cell);
+            cell.progressView.progress = progress;
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
+}
+
+- (void)packages:(NSArray<ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
+    });
 }
 
 @end

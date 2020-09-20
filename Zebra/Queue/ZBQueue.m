@@ -8,6 +8,8 @@
 
 #import "ZBQueue.h"
 
+#import "ZBQueueViewController.h"
+
 #import <ZBAppDelegate.h>
 #import <ZBDevice.h>
 #import <Downloads/ZBDownloadManager.h>
@@ -30,6 +32,8 @@
 NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 @implementation ZBQueue
+
+@synthesize controller = _controller;
 
 #pragma mark - Initializers
 
@@ -73,6 +77,30 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 - (BOOL)isDownloading {
     return self.downloadsRemaining > 0;
+}
+
+- (NSArray <NSArray <ZBPackage *> *> *)packages {
+    NSMutableArray *packages = [NSMutableArray new];
+    
+    packages[ZBQueueTypeInstall - 1] = installQueue;
+    packages[ZBQueueTypeRemove - 1] = removeQueue;
+    packages[ZBQueueTypeReinstall - 1] = reinstallQueue;
+    packages[ZBQueueTypeUpgrade - 1] = upgradeQueue;
+    packages[ZBQueueTypeDowngrade - 1] = downgradeQueue;
+    
+    return packages;
+}
+
+- (ZBQueueViewController *)controller {
+    if (_controller) return _controller;
+    if ([NSThread isMainThread]) return [[ZBQueueViewController alloc] init];
+        
+    __block ZBQueueViewController* controller;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        controller = [[ZBQueueViewController alloc] init];
+    });
+    
+    return controller;
 }
 
 #pragma mark - Queue Management
@@ -148,20 +176,16 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 - (void)finishedAllDownloads {}
 
 - (void)startedPackageDownload:(ZBPackage *)package {
-    NSLog(@"[Zebra] Started download for package %@", package);
-    
-    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
+    [self.controller progress:0.0 forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
-    NSLog(@"[Zebra] %@ Progress: %f", package, progress);
+    [self.controller progress:progress forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
-    NSLog(@"[Zebra] Finished download for package %@", package);
-    
+    [self.controller progress:1.0 forPackage:package inQueue:[self locate:package]];
     [packagesToDownload removeObject:package];
-    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
 #pragma mark - Helper Methods

@@ -11,6 +11,7 @@
 
 #import <Downloads/ZBDownloadDelegate.h>
 
+@class ZBQueueViewController;
 @class ZBPackage;
 @class UIColor;
 
@@ -27,11 +28,19 @@ typedef NS_ENUM(NSUInteger, ZBQueueType) {
 
 NS_ASSUME_NONNULL_BEGIN
 
+@protocol ZBQueueDelegate
+- (void)packages:(NSArray <ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue;
+- (void)packages:(NSArray <ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue;
+- (void)progress:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+@end
+
 @interface ZBQueue : NSObject <ZBDownloadDelegate>
 @property (readonly) unsigned long long count;
 @property (readonly) unsigned long long downloadsRemaining;
 @property (readonly) BOOL downloading;
 @property (readonly) CGFloat downloadProgress;
+@property (readonly) NSArray <NSArray <ZBPackage *> *> *packages;
+@property (readonly) ZBQueueViewController *controller;
 + (instancetype)sharedQueue;
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue;
 - (void)remove:(ZBPackage *)package;
