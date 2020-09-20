@@ -30,6 +30,12 @@
 @import SafariServices;
 
 @interface ZBPackage () {
+    NSString *author;
+    NSString *maintainer;
+    
+    NSString *lowestCompatibleVersion;
+    NSString *highestCompatibleVersion;
+    
     BOOL checkedForPurchaseInfo;
     ZBPurchaseInfo *purchaseInfo;
 }
@@ -37,33 +43,12 @@
 
 @implementation ZBPackage
 
-@synthesize identifier;
-@synthesize name;
-@synthesize version;
-@synthesize tagline;
-@synthesize packageDescription;
-@synthesize section;
-@synthesize depictionURL;
-@synthesize tags;
-@synthesize dependsOn;
-@synthesize conflictsWith;
-@synthesize provides;
-@synthesize replaces;
-@synthesize authorName;
-@synthesize authorEmail;
-@synthesize source;
-@synthesize filename;
-@synthesize debPath;
-@synthesize dependencies;
-@synthesize dependencyOf;
-@synthesize issues;
-@synthesize removedBy;
-@synthesize installedSize;
-@synthesize downloadSize;
-@synthesize priority;
-@synthesize essential;
-@synthesize ignoreDependencies;
-@synthesize SHA256;
+@synthesize authorName = _authorName;
+@synthesize authorEmail = _authorEmail;
+@synthesize maintainerName = _maintainerName;
+@synthesize maintainerEmail = _maintainerEmail;
+@synthesize lowestCompatibleVersion = _lowestCompatibleVersion;
+@synthesize highestCompatibleVersion = _highestCompatibleVersion;
 
 + (NSArray *)filesInstalledBy:(NSString *)packageID {
     ZBLog(@"[Zebra] Getting installed files for %@", packageID);
@@ -199,8 +184,7 @@
         const char *sectionChars =          (const char *)sqlite3_column_text(statement, ZBPackageColumnSection);
         const char *depictionChars =        (const char *)sqlite3_column_text(statement, ZBPackageColumnDepiction);
         const char *tagChars =              (const char *)sqlite3_column_text(statement, ZBPackageColumnTag);
-        const char *authorNameChars =       (const char *)sqlite3_column_text(statement, ZBPackageColumnAuthorName);
-        const char *authorEmailChars =      (const char *)sqlite3_column_text(statement, ZBPackageColumnAuthorEmail);
+        const char *authorChars =           (const char *)sqlite3_column_text(statement, ZBPackageColumnAuthor);
         const char *dependsChars =          (const char *)sqlite3_column_text(statement, ZBPackageColumnDepends);
         const char *conflictsChars =        (const char *)sqlite3_column_text(statement, ZBPackageColumnConflicts);
         const char *providesChars =         (const char *)sqlite3_column_text(statement, ZBPackageColumnProvides);
@@ -210,13 +194,8 @@
         const char *priorityChars =         (const char *)sqlite3_column_text(statement, ZBPackageColumnPriority);
         const char *essentialChars =        (const char *)sqlite3_column_text(statement, ZBPackageColumnEssential);
         const char *sha256Chars =           (const char *)sqlite3_column_text(statement, ZBPackageColumnSHA256);
-        const char *headerChars =           (const char *)sqlite3_column_text(statement, ZBPackageColumnHeader);
-        const char *changelogTitleChars =   (const char *)sqlite3_column_text(statement, ZBPackageColumnChangelog);
-        const char *changelogNotesChars =   (const char *)sqlite3_column_text(statement, ZBPackageColumnChangelogNotes);
         const char *homepageChars =         (const char *)sqlite3_column_text(statement, ZBPackageColumnHomepage);
-        const char *previewsChars =         (const char *)sqlite3_column_text(statement, ZBPackageColumnPreviews);
-        const char *maintainerNameChars =   (const char *)sqlite3_column_text(statement, ZBPackageColumnMaintainerName);
-        const char *maintainerEmailChars =  (const char *)sqlite3_column_text(statement, ZBPackageColumnMaintainerEmail);
+        const char *maintainerChars =       (const char *)sqlite3_column_text(statement, ZBPackageColumnMaintainer);
         const char *preferNativeChars =     (const char *)sqlite3_column_text(statement, ZBPackageColumnPreferNative);
         sqlite3_int64 lastSeen =            sqlite3_column_int64(statement, ZBPackageColumnLastSeen);
         
@@ -229,16 +208,11 @@
         [self setPackageDescription:descriptionChars != 0 ? [NSString stringWithUTF8String:descriptionChars] : nil];
         [self setSection:sectionChars != 0 ? [NSString stringWithUTF8String:sectionChars] : nil];
         [self setDepictionURL:depictionChars != 0 ? [NSURL URLWithString:[NSString stringWithUTF8String:depictionChars]] : nil];
-        [self setAuthorName:authorNameChars != 0 ? [NSString stringWithUTF8String:authorNameChars] : NULL];
-        [self setAuthorEmail:authorEmailChars != 0 ? [NSString stringWithUTF8String:authorEmailChars] : nil];
+        author = authorChars != 0 ? [NSString stringWithUTF8String:authorChars] : NULL;
         [self setFilename:filenameChars != 0 ? [NSString stringWithUTF8String:filenameChars] : nil];
         [self setIconPath:iconChars != 0 ? [NSString stringWithUTF8String:iconChars] : nil]; // TODO: Should change to iconURL later
-        [self setHeaderURL:headerChars != 0 ? [NSURL URLWithString:[NSString stringWithUTF8String:headerChars]] : nil];
-        [self setChangelogTitle:changelogTitleChars != 0 ? [NSString stringWithUTF8String:changelogTitleChars] : nil];
-        [self setChangelogNotes:changelogNotesChars != 0 ? [NSString stringWithUTF8String:changelogNotesChars] : nil];
         [self setHomepageURL:homepageChars != 0 ? [NSURL URLWithString:[NSString stringWithUTF8String:homepageChars]] : nil];
-        [self setMaintainerName:maintainerNameChars != 0 ? [NSString stringWithUTF8String:maintainerNameChars] : nil];
-        [self setMaintainerEmail:maintainerEmailChars != 0 ? [NSString stringWithUTF8String:maintainerEmailChars] : nil];
+        maintainer = maintainerChars != 0 ? [NSString stringWithUTF8String:maintainerChars] : nil;
         
         [self setPriority:priorityChars != 0 ? [NSString stringWithUTF8String:priorityChars] : nil];
         
@@ -261,11 +235,10 @@
         [self setSHA256:sha256Chars != 0 ? [NSString stringWithUTF8String:sha256Chars] : nil];
         
         [self setTags:tagChars != 0 ? [[NSString stringWithUTF8String:tagChars] componentsSeparatedByString:@", "] : nil];
-        if ([tags count] == 1 && [tags[0] containsString:@","]) {
-            tags = [tags[0] componentsSeparatedByString:@","];
+        if (self.tags.count == 1 && [self.tags[0] containsString:@","]) {
+            self.tags = [self.tags[0] componentsSeparatedByString:@","];
         }
         
-        [self setPreviewImageURLs:previewsChars != 0 ? [[NSString stringWithUTF8String:previewsChars] componentsSeparatedByString:@", "] : NULL];
         if ([_previewImageURLs count] == 1 && [_previewImageURLs[0] containsString:@","]) {
             _previewImageURLs = [_previewImageURLs[0] componentsSeparatedByString:@","];
         }
@@ -326,7 +299,6 @@
         [self setAuthorName:author];
         [self setIconPath:icon];
         [self setPriority:priority];
-        [self setTags:tags];
         
         if (essential && [essential isEqualToString:@"yes"]) {
             [self setEssential:YES];
@@ -335,8 +307,8 @@
             [self setEssential:NO];
         }
         
-        if ([tags count] == 1 && [tags[0] containsString:@","]) { // Fix crimes against humanity @Dnasty
-            tags = [tags[0] componentsSeparatedByString:@","];
+        if ([self.tags count] == 1 && [self.tags[0] containsString:@","]) { // Fix crimes against humanity @Dnasty
+            self.tags = [self.tags[0] componentsSeparatedByString:@","];
         }
         
         [self setDependsOn:[self extract:[depends UTF8String]]];
@@ -401,7 +373,7 @@
 }
 
 - (NSString *)description {
-    return [NSString stringWithFormat: @"%@ (%@) v%@ by %@ via %@", name, identifier, version, authorName ?: NSLocalizedString(@"Unknown", @""), [source label] ?: NSLocalizedString(@"Unknown", @"")];
+    return [NSString stringWithFormat: @"%@ (%@) v%@ by %@ via %@", self.name, self.identifier, self.version, self.authorName ?: NSLocalizedString(@"Unknown", @""), [self.source label] ?: NSLocalizedString(@"Unknown", @"")];
 }
 
 - (NSComparisonResult)compare:(id)object {
@@ -425,7 +397,7 @@
 }
 
 - (BOOL)isPaid {
-    return [tags containsObject:@"cydia::commercial"];
+    return [self.tags containsObject:@"cydia::commercial"];
 }
 
 - (BOOL)mightRequirePayment {
@@ -551,28 +523,28 @@
 }
 
 - (NSString * _Nullable)downloadSizeString {
-    if (downloadSize <= 0) return nil;
-    double size = (double)downloadSize;
+    if (self.downloadSize <= 0) return nil;
+    double size = (double)self.downloadSize;
     if (size > 1024 * 1024) {
         return [NSString stringWithFormat:NSLocalizedString(@"%.2f MB", @""), size / 1024 / 1024];
     }
     if (size > 1024) {
         return [NSString stringWithFormat:NSLocalizedString(@"%.2f KB", @""), size / 1024];
     }
-    return [NSString stringWithFormat:NSLocalizedString(@"%d bytes", @""), downloadSize];
+    return [NSString stringWithFormat:NSLocalizedString(@"%d bytes", @""), self.downloadSize];
 }
 
 - (NSString * _Nullable)installedSizeString {
-    if (installedSize <= 0) return nil;
-    double size = (double)installedSize;
+    if (self.installedSize <= 0) return nil;
+    double size = (double)self.installedSize;
     if (size > 1024) {
         return [NSString stringWithFormat:NSLocalizedString(@"%.2f MB", @""), size / 1024];
     }
-    return [NSString stringWithFormat:NSLocalizedString(@"%d KB", @""), installedSize];
+    return [NSString stringWithFormat:NSLocalizedString(@"%d KB", @""), self.installedSize];
 }
 
 - (BOOL)isInstalled:(BOOL)strict {
-    if (source && [source sourceID] <= 0) { // Package is in sourceID 0 or -1
+    if (self.source && [self.source sourceID] <= 0) { // Package is in sourceID 0 or -1
         return YES;
     }
     ZBDatabaseManager *databaseManager = [ZBDatabaseManager sharedInstance];
@@ -666,33 +638,33 @@
 }
 
 - (void)addDependency:(ZBPackage *)package {
-    if (!dependencies) dependencies = [NSMutableArray new];
+    if (!self.dependencies) self.dependencies = [NSMutableArray new];
     
-    if (![dependencies containsObject:package]) {
-        [dependencies addObject:package];
+    if (![self.dependencies containsObject:package]) {
+        [self.dependencies addObject:package];
     }
 }
 
 - (void)addDependencyOf:(ZBPackage *)package {
-    if (!dependencyOf) dependencyOf = [NSMutableArray new];
+    if (!self.dependencyOf) self.dependencyOf = [NSMutableArray new];
     
-    if (![dependencyOf containsObject:package]) {
-        [dependencyOf addObject:package];
+    if (![self.dependencyOf containsObject:package]) {
+        [self.dependencyOf addObject:package];
     }
 }
 
 - (void)addIssue:(NSString *)issue {
-    if (!issues) issues = [NSMutableArray new];
+    if (!self.issues) self.issues = [NSMutableArray new];
     
-    [issues addObject:issue];
+    [self.issues addObject:issue];
 }
 
 - (BOOL)hasIssues {
-    return [issues count];
+    return [self.issues count];
 }
 
 - (BOOL)isEssentialOrRequired {
-    return essential || [[priority lowercaseString] isEqualToString:@"required"];
+    return self.essential || [[self.priority lowercaseString] isEqualToString:@"required"];
 }
 
 - (void)setIconImageForImageView:(UIImageView *)imageView {
@@ -811,21 +783,29 @@
     NSMutableArray *information = [NSMutableArray new];
     BOOL installed = [self isInstalled:NO];
     
-    if (installed) {
+    NSArray <ZBPackage *> *allVersions = [self allVersions];
+    if (allVersions.count > 1 && installed) {
         NSString *installedVersion = [self installedVersion];
+        
+        ZBPackage *latest = allVersions[0];
+        if ([latest compare:installedVersion] == NSOrderedDescending) {
+            NSString *latestVersion = latest.version;
+            if (latestVersion) {
+                NSDictionary *latestVersionInfo = @{@"name": NSLocalizedString(@"Latest Version", @""), @"value": latestVersion, @"cellType": @"info"};
+                [information addObject:latestVersionInfo];
+            }
+        }
+        
         if (installedVersion) {
             NSDictionary *installedVersionInfo = @{@"name": NSLocalizedString(@"Installed Version", @""), @"value": installedVersion, @"cellType": @"info"};
             [information addObject:installedVersionInfo];
         }
     }
-    else {
-        NSArray <ZBPackage *> *allVersions = [self allVersions];
-        if (allVersions.count) { // Theres at least one package
-            NSString *latestVersion = [allVersions[0] version];
-            if (latestVersion) {
-                NSDictionary *latestVersionInfo = @{@"name": NSLocalizedString(@"Version", @""), @"value": latestVersion, @"cellType": @"info"};
-                [information addObject:latestVersionInfo];
-            }
+    else if (allVersions.count) {
+        NSString *latestVersion = [allVersions[0] version];
+        if (latestVersion) {
+            NSDictionary *latestVersionInfo = @{@"name": NSLocalizedString(@"Version", @""), @"value": latestVersion, @"cellType": @"info"};
+            [information addObject:latestVersionInfo];
         }
     }
     
@@ -870,8 +850,13 @@
     
     NSString *sourceOrigin = [[self source] origin];
     if (sourceOrigin) {
-        NSDictionary *sourceOriginInfo = @{@"name": NSLocalizedString(@"Source", @""), @"value": sourceOrigin, @"cellType": @"info"};
-        [information addObject:sourceOriginInfo];
+        if (self.source.sourceID > 0) {
+            NSDictionary *sourceOriginInfo = @{@"name": NSLocalizedString(@"Source", @""), @"value": sourceOrigin, @"cellType": @"info", @"class": @"ZBSourceSectionsListTableViewController"};
+            [information addObject:sourceOriginInfo];
+        } else {
+            NSDictionary *sourceOriginInfo = @{@"name": NSLocalizedString(@"Source", @""), @"value": sourceOrigin, @"cellType": @"info"};
+            [information addObject:sourceOriginInfo];
+        }
     }
     
     NSString *section = [self section];
@@ -882,14 +867,66 @@
     
     NSArray *dependencies = [self dependsOn];
     if ([dependencies count]) {
-        NSDictionary *dependsInfo = @{@"name": NSLocalizedString(@"Dependencies", @""), @"value": [NSString stringWithFormat:@"%lu Dependencies", (unsigned long)dependencies.count], @"cellType": @"info", @"more": [dependencies componentsJoinedByString:@"\n"]};
+        NSMutableArray *strippedDepends = [NSMutableArray new];
+        for (NSString *depend in dependencies) {
+            if ([depend containsString:@" | "]) {
+                NSArray *ord = [depend componentsSeparatedByString:@" | "];
+                for (__strong NSString *conflict in ord) {
+                    NSRange range = [conflict rangeOfString:@"("];
+                    if (range.location != NSNotFound) {
+                        conflict = [conflict substringToIndex:range.location];
+                    }
+                    
+                    if (![strippedDepends containsObject:conflict]) {
+                        [strippedDepends addObject:conflict];
+                    }
+                }
+            }
+            else if (![strippedDepends containsObject:depend]) {
+                [strippedDepends addObject:depend];
+            }
+        }
+        
+        NSDictionary *dependsInfo = @{@"name": NSLocalizedString(@"Dependencies", @""), @"value": [NSString stringWithFormat:@"%lu Dependencies", (unsigned long)strippedDepends.count], @"cellType": @"info", @"more": [strippedDepends componentsJoinedByString:@"\n"]};
         [information addObject:dependsInfo];
     }
     
     NSArray *conflicts = [self conflictsWith];
     if ([conflicts count]) {
-        NSDictionary *conflictsInfo = @{@"name": NSLocalizedString(@"Conflicts", @""), @"value": [NSString stringWithFormat:@"%lu Conflicts", (unsigned long)conflicts.count], @"cellType": @"info", @"more": [conflicts componentsJoinedByString:@"\n"]};
+        NSMutableArray *strippedConflicts = [NSMutableArray new];
+        for (NSString *conflict in conflicts) {
+            if ([conflict containsString:@" | "]) {
+                NSArray *orc = [conflict componentsSeparatedByString:@" | "];
+                for (__strong NSString *conflict in orc) {
+                    NSRange range = [conflict rangeOfString:@"("];
+                    if (range.location != NSNotFound) {
+                        conflict = [conflict substringToIndex:range.location];
+                    }
+                    
+                    if (![strippedConflicts containsObject:conflict]) {
+                        [strippedConflicts addObject:conflict];
+                    }
+                }
+            }
+            else if (![strippedConflicts containsObject:conflict]) {
+                [strippedConflicts addObject:conflict];
+            }
+        }
+        
+        NSDictionary *conflictsInfo = @{@"name": NSLocalizedString(@"Conflicts", @""), @"value": [NSString stringWithFormat:@"%lu Conflicts", (unsigned long)strippedConflicts.count], @"cellType": @"info", @"more": [strippedConflicts componentsJoinedByString:@"\n"]};
         [information addObject:conflictsInfo];
+    }
+    
+    if (self.lowestCompatibleVersion) {
+        NSString *compatibility;
+        if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(self.lowestCompatibleVersion) && SYSTEM_VERSION_LESS_THAN_OR_EQUAL_TO(self.highestCompatibleVersion)) {
+            compatibility = @"✅";
+        } else {
+            compatibility = @"⚠️";
+        }
+        
+        NSDictionary *compatibiltyInfo = @{@"name": NSLocalizedString(@"Compatibility", @""), @"value": [NSString stringWithFormat:NSLocalizedString(@"iOS %@ - %@ %@", @""), self.lowestCompatibleVersion, self.highestCompatibleVersion, compatibility], @"cellType": @"info"};
+        [information addObject:compatibiltyInfo];
     }
     
     NSURL *homepage = [self homepageURL];
@@ -904,6 +941,12 @@
         [information addObject:homepageInfo];
     }
     
+    NSURL *depiction = [self depictionURL];
+    if (depiction) {
+        NSDictionary *depictionInfo = @{@"name": NSLocalizedString(@"View Depiction in Safari", @""), @"cellType": @"link", @"link": depiction, @"image": @"Web Link"};
+        [information addObject:depictionInfo];
+    }
+    
     return information;
 }
 
@@ -913,9 +956,9 @@
 
 - (NSString *)changelogTitle {
     if (_changelogTitle && ![_changelogTitle isEqualToString:@""]) {
-        return [NSString stringWithFormat:NSLocalizedString(@"Version %@ — %@", @""), version, _changelogTitle];
+        return [NSString stringWithFormat:NSLocalizedString(@"Version %@ — %@", @""), self.version, _changelogTitle];
     }
-    return [NSString stringWithFormat:NSLocalizedString(@"Version %@", @""), version];
+    return [NSString stringWithFormat:NSLocalizedString(@"Version %@", @""), self.version];
 }
 
 - (NSString *)changelogNotes {
@@ -1067,6 +1110,103 @@
     metaData.imageProvider = [[NSItemProvider alloc] initWithObject:[ZBSource imageForSection:self.section]];
     
     return metaData;
+}
+
+- (NSString *)authorName {
+    if (!author) return NULL;
+    if (_authorName) return _authorName;
+    
+    NSArray *split = [ZBUtils splitNameAndEmail:author];
+    if (split.count >= 1) {
+        _authorName = split[0];
+        return _authorName;
+    }
+    
+    return NULL;
+}
+
+- (NSString *)authorEmail {
+    if (!author) return NULL;
+    if (_authorEmail) return _authorEmail;
+    
+    NSArray *split = [ZBUtils splitNameAndEmail:author];
+    if (split.count > 1) {
+        _authorEmail = split[1];
+        return _authorEmail;
+    }
+    
+    return NULL;
+}
+
+- (NSString *)maintainerName {
+    if (!maintainer) return NULL;
+    if (_maintainerName) return _maintainerName;
+    
+    NSArray *split = [ZBUtils splitNameAndEmail:maintainer];
+    if (split.count >= 1) {
+        _maintainerName = split[0];
+        return _maintainerName;
+    }
+    
+    return NULL;
+}
+
+- (NSString *)maintainerEmail {
+    if (!maintainer) return NULL;
+    if (_maintainerEmail) return _maintainerEmail;
+    
+    NSArray *split = [ZBUtils splitNameAndEmail:maintainer];
+    if (split.count > 1) {
+        _maintainerEmail = split[1];
+        return _maintainerEmail;
+    }
+    
+    return NULL;
+}
+
+- (void)calculateCompatibleVersions {
+    NSString *minVersion = NULL;
+    NSString *maxVersion = NULL;
+    
+    for (NSString *tag in self.tags) {
+        if ([tag containsString:@"compatible_min"]) {
+            minVersion = tag;
+        } else if ([tag containsString:@"compatible_max"]) {
+            maxVersion = tag;
+        }
+    }
+    
+    if (minVersion) {
+        minVersion = [minVersion stringByReplacingOccurrencesOfString:@"compatible_min::" withString:@""];
+        minVersion = [minVersion stringByReplacingOccurrencesOfString:@"ios" withString:@""];
+        
+        lowestCompatibleVersion = minVersion;
+    }
+    
+    if (maxVersion) {
+        maxVersion = [maxVersion stringByReplacingOccurrencesOfString:@"compatible_max::" withString:@""];
+        maxVersion = [maxVersion stringByReplacingOccurrencesOfString:@"ios" withString:@""];
+        
+        highestCompatibleVersion = maxVersion;
+    } else if (minVersion) {
+        highestCompatibleVersion = [[UIDevice currentDevice] systemVersion];
+    }
+}
+
+- (NSString *)lowestCompatibleVersion {
+    if (!self.tags || self.tags.count == 0) return NULL;
+    if (lowestCompatibleVersion) return lowestCompatibleVersion;
+    
+    [self calculateCompatibleVersions];
+    return lowestCompatibleVersion;
+}
+
+- (NSString *)highestCompatibleVersion {
+    if (!self.tags || self.tags.count == 0) return NULL;
+    if (highestCompatibleVersion) return highestCompatibleVersion;
+    
+    [self calculateCompatibleVersions];
+    return highestCompatibleVersion;
 }
 
 @end

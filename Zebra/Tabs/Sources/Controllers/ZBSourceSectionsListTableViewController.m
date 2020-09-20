@@ -15,6 +15,7 @@
 #import <ZBDevice.h>
 #import <Extensions/UIColor+GlobalColors.h>
 #import <Database/ZBDatabaseManager.h>
+#import <Tabs/Packages/Helpers/ZBPackage.h>
 #import <Tabs/Packages/Controllers/ZBPackageListTableViewController.h>
 #import <Tabs/Packages/Views/ZBPackageTableViewCell.h>
 #import <Tabs/Sources/Helpers/ZBSourceManager.h>
@@ -60,6 +61,10 @@
     return self;
 }
 
+- (id)initWithPackage:(ZBPackage *)package {
+    return [self initWithSource:package.source editOnly:NO];
+}
+
 - (BOOL)showFeaturedSection {
     return !editOnly;
 }
@@ -76,7 +81,6 @@
         return NSLocalizedString(section, @"");
     }
 }
-
 
 #pragma mark - View Controller Lifecycle
 

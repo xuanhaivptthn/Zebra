@@ -209,7 +209,13 @@ NSString *const ZBUserEndedScreenCaptureNotification = @"EndedScreenCaptureNotif
     [self registerForScreenshotNotifications];
     
     self.window.tintColor = [UIColor accentColor];
-    self.window.rootViewController = [[ZBTabBarController alloc] init];
+    
+    if ([ZBDatabaseManager needsMigration]) {
+        self.window.rootViewController = [[ZBRefreshViewController alloc] init];
+    }
+    else {
+        self.window.rootViewController = [[ZBTabBarController alloc] init];
+    }
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(checkForScreenRecording:) name:UIScreenCapturedDidChangeNotification object:nil];
     
     return YES;
@@ -358,6 +364,10 @@ NSString *const ZBUserEndedScreenCaptureNotification = @"EndedScreenCaptureNotif
         ZBSourceListViewController *sourceListController = (ZBSourceListViewController *)((UINavigationController *)[tabController selectedViewController]).viewControllers[0];
         
         [sourceListController handleURL:[NSURL URLWithString:@"zbra://sources/add"]];
+    } else if ([shortcutItem.type isEqualToString:@"Refresh"]) {
+        ZBTabBarController *tabController = [ZBAppDelegate tabBarController];
+        
+        [tabController requestSourceRefresh];
     }
 }
 

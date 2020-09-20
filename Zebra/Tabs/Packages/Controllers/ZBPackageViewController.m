@@ -26,6 +26,7 @@
 
 @interface ZBPackageViewController () {
     UIStatusBarStyle style;
+    NSMutableIndexSet *expandedCells;
 }
 @property (strong, nonatomic) IBOutlet UIImageView *iconImageView;
 @property (weak, nonatomic) IBOutlet UILabel *nameLabel;
@@ -59,6 +60,7 @@
     
     if (self) {
         self.package = package;
+        expandedCells = [NSMutableIndexSet new];
     }
     
     return self;
@@ -85,7 +87,6 @@
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     
-    [self updateTableViewHeightBasedOnContent];
     self.headerImageGradientLayer.frame = self.headerImageGradientView.bounds;
     self.scrollView.scrollIndicatorInsets = UIEdgeInsetsMake(-self.navigationController.navigationBar.frame.size.height, 0, 0, 0); // Kinda hacky
 }
@@ -95,6 +96,10 @@
     
     [self.navigationController.navigationBar _setBackgroundOpacity:1];
     [self.navigationController.navigationBar setTintColor:[UIColor accentColor]];
+}
+
+- (void)dealloc {
+    [self.informationTableView removeObserver:self forKeyPath:@"contentSize"];
 }
 
 #pragma mark - View Setup
@@ -136,6 +141,8 @@
     
     // Information Table View
     [self.informationTableView setSeparatorColor:[UIColor cellSeparatorColor]];
+    [self.informationTableView setBackgroundColor:[UIColor tableViewBackgroundColor]];
+    [self.informationTableView addObserver:self forKeyPath:@"contentSize" options:NSKeyValueObservingOptionNew context:nil];
 }
 
 - (void)setData {
@@ -175,10 +182,6 @@
 
 #pragma mark - Helper Methods
 
-- (void)updateTableViewHeightBasedOnContent {
-    self.informationTableViewHeightConstraint.constant = self.informationTableView.contentSize.height;
-}
-
 - (void)showAuthorName {
     [UIView transitionWithView:self.tagLineLabel duration:0.25f options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
         self.tagLineLabel.text = self.package.authorName;
@@ -194,8 +197,8 @@
             [self.getButton hideActivityLoader];
             [self.getBarButton hideActivityLoader];
             
-            [self.getButton setTitle:[text uppercaseString] forState:UIControlStateNormal];
-            [self.getBarButton setTitle:[text uppercaseString] forState:UIControlStateNormal];
+            [self.getButton setTitle:text forState:UIControlStateNormal];
+            [self.getBarButton setTitle:text forState:UIControlStateNormal];
         } else {
             [self.getButton showActivityLoader];
             [self.getBarButton showActivityLoader];
@@ -204,7 +207,13 @@
 }
 
 - (IBAction)getButtonPressed:(id)sender {
-    [ZBPackageActions buttonActionForPackage:self.package]();
+    if ([self isModal]) {
+        [ZBPackageActions buttonActionForPackage:self.package completion:^{
+            [self dismissViewControllerAnimated:YES completion:nil];
+        }]();
+    } else {
+        [ZBPackageActions buttonActionForPackage:self.package completion:nil]();
+    }
 }
 
 - (IBAction)moreButtonPressed:(id)sender {
@@ -352,13 +361,21 @@
         cell.nameLabel.text = self.packageInformation[indexPath.row][@"name"];
         cell.valueLabel.text = self.packageInformation[indexPath.row][@"value"];
         
-        if ([packageInformation objectForKey:@"class"]) {
+        if ([packageInformation objectForKey:@"class"] || [packageInformation objectForKey:@"more"]) {
             cell.selectionStyle = UITableViewCellSelectionStyleDefault;
             [cell setChevronHidden:NO];
         }
         else {
             cell.selectionStyle = UITableViewCellSelectionStyleNone;
             [cell setChevronHidden:YES];
+        }
+        
+        if ([expandedCells containsIndex:indexPath.row] && [packageInformation objectForKey:@"more"]) {
+            cell.valueLabel.text = [packageInformation objectForKey:@"more"];
+            [cell setChevronHidden:YES];
+            cell.valueLabel.numberOfLines = 0;
+        } else {
+            cell.valueLabel.numberOfLines = 1;
         }
 
         return cell;
@@ -403,6 +420,11 @@
             
             [self presentViewController:doesNotConform animated:YES completion:nil];
         }
+    } else if ([packageInformation objectForKey:@"more"]) {
+        if (![expandedCells containsIndex:indexPath.row]) {
+            [expandedCells addIndex:indexPath.row];
+            [tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+        }
     }
 }
 
@@ -411,6 +433,14 @@
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     if (scrollView != self.scrollView) return;
     [self updateNavigationBarBackgroundOpacityForCurrentScrollOffset];
+}
+
+#pragma mark - UITableView contentSize Observer
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if (object == self.informationTableView && [keyPath isEqual:@"contentSize"] && self.informationTableViewHeightConstraint.constant != self.informationTableView.contentSize.height) {
+        self.informationTableViewHeightConstraint.constant = self.informationTableView.contentSize.height;
+    }
 }
 
 @end

@@ -73,7 +73,7 @@ const char *textColumn(sqlite3_stmt *statement, int column) {
         imageName = components[0];
     }
     
-    UIImage *sectionImage = [UIImage imageNamed:imageName] ?: [UIImage imageWithContentsOfFile:[NSString stringWithFormat:@"/Applications/Zebra.app/Sections/%@.png", imageName]] ?: [UIImage imageNamed:@"Other"];
+    UIImage *sectionImage = [UIImage imageNamed:imageName] ?: [UIImage imageWithContentsOfFile:[NSString stringWithFormat:@"/Applications/Zebra.app/Sections/%@.png", imageName]] ?: [UIImage imageNamed:@"Unknown"];
     return sectionImage;
 }
 
@@ -83,12 +83,14 @@ const char *textColumn(sqlite3_stmt *statement, int column) {
     const char *distributionChars  = textColumn(statement, ZBSourceColumnDistribution);
     const char *componenetsChars   = textColumn(statement, ZBSourceColumnComponents);
     
+    if (repositoryURIChars == 0) return NULL;
+    
     NSArray *components;
     if (componenetsChars != 0 && strcmp(componenetsChars, "") != 0) {
         components = [[NSString stringWithUTF8String:componenetsChars] componentsSeparatedByString:@" "];
     }
     
-    self = [super initWithArchiveType:archiveTypeChars != 0 ? [NSString stringWithUTF8String:archiveTypeChars] : @"deb" repositoryURI:[NSString stringWithUTF8String:repositoryURIChars] distribution:[NSString stringWithUTF8String:distributionChars] components:components];
+    self = [super initWithArchiveType:archiveTypeChars != 0 ? [NSString stringWithUTF8String:archiveTypeChars] : @"deb" repositoryURI:[NSString stringWithUTF8String:repositoryURIChars] distribution:distributionChars != 0 ? [NSString stringWithUTF8String:distributionChars] : @"./" components:components];
     
     if (self) {
         const char *descriptionChars   = textColumn(statement, ZBSourceColumnDescription);
