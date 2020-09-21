@@ -32,6 +32,7 @@
     if (self) {
         self.title = NSLocalizedString(@"Queue", @"");
         queue = [ZBQueue sharedQueue];
+        queue.delegate = self;
         packagesQueued = queue.packages;
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueue) name:@"ZBQueueUpdate" object:nil];
@@ -80,9 +81,6 @@
 }
 
 #pragma mark - Table View Data Source
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSLog(@"%ld %ld", (long)indexPath.row, (long)indexPath.section);
-}
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     return packagesQueued.count;
@@ -129,17 +127,14 @@
 }
 
 - (void)progress:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
-    NSLog(@"%@ Progress: %f", package.name, progress);
     if (queue == ZBQueueTypeNone) return;
     
     NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
     if (row != NSNotFound) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
         dispatch_async(dispatch_get_main_queue(), ^{
-            ZBQueueTableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"queueTableViewCell" forIndexPath:indexPath];
-            NSLog(@"cell %@", cell);
-            cell.progressView.progress = progress;
-            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+            ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+            [cell setProgress:progress];
         });
     }
 }

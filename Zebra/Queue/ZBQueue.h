@@ -40,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly) BOOL downloading;
 @property (readonly) CGFloat downloadProgress;
 @property (readonly) NSArray <NSArray <ZBPackage *> *> *packages;
-@property (readonly) ZBQueueViewController *controller;
+@property id <ZBQueueDelegate> delegate;
 + (instancetype)sharedQueue;
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue;
 - (void)remove:(ZBPackage *)package;

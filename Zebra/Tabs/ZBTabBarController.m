@@ -25,6 +25,7 @@
 @interface ZBTabBarController () {
     ZBSourceManager *sourceManager;
     UIActivityIndicatorView *sourceRefreshIndicator;
+    UINavigationController *queueController;
 }
 @end
 
@@ -149,9 +150,12 @@
 #pragma mark - Queue Popup Bar
 
 - (void)updateQueueBar {
+    if (!queueController)
+        queueController = [[UINavigationController alloc] initWithRootViewController:[[ZBQueueViewController alloc] init]];
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         self.popupContentView.popupCloseButtonStyle = LNPopupCloseButtonStyleNone;
-        [self presentPopupBarWithContentViewController:[[UINavigationController alloc] initWithRootViewController:[[ZBQueue sharedQueue] controller]] animated:YES completion:nil];
+        [self presentPopupBarWithContentViewController:queueController animated:YES completion:nil];
     });
 }
 

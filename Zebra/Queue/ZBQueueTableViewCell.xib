@@ -36,7 +36,7 @@
                         <color key="textColor" systemColor="secondaryLabelColor"/>
                         <nil key="highlightedColor"/>
                     </label>
-                    <progressView opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="750" progress="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="koh-u2-Twp">
+                    <progressView hidden="YES" opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="koh-u2-Twp">
                         <rect key="frame" x="78" y="59" width="316" height="4"/>
                     </progressView>
                 </subviews>

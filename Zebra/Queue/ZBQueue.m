@@ -33,8 +33,6 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 @implementation ZBQueue
 
-@synthesize controller = _controller;
-
 #pragma mark - Initializers
 
 + (instancetype)sharedQueue {
@@ -91,18 +89,6 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return packages;
 }
 
-- (ZBQueueViewController *)controller {
-    if (_controller) return _controller;
-    if ([NSThread isMainThread]) return [[ZBQueueViewController alloc] init];
-        
-    __block ZBQueueViewController* controller;
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        controller = [[ZBQueueViewController alloc] init];
-    });
-    
-    return controller;
-}
-
 #pragma mark - Queue Management
 
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue {
@@ -116,7 +102,9 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         case ZBQueueTypeDependency:
             if (![package debPath]) { // Packages that are already downloaded will have debPath set
                 [packagesToDownload addObject:package];
-                if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [downloadManager downloadPackages:@[package]];
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [self->downloadManager downloadPackages:@[package]];
+                });
             }
         case ZBQueueTypeRemove:
         case ZBQueueTypeConflict: {
@@ -176,15 +164,15 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 - (void)finishedAllDownloads {}
 
 - (void)startedPackageDownload:(ZBPackage *)package {
-    [self.controller progress:0.0 forPackage:package inQueue:[self locate:package]];
+    [_delegate progress:0.0 forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
-    [self.controller progress:progress forPackage:package inQueue:[self locate:package]];
+    [_delegate progress:progress forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
-    [self.controller progress:1.0 forPackage:package inQueue:[self locate:package]];
+    [_delegate progress:1.0 forPackage:package inQueue:[self locate:package]];
     [packagesToDownload removeObject:package];
 }
 
