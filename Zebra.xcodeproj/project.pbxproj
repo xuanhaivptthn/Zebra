@@ -1050,11 +1050,11 @@
 			children = (
 				89DD26842201571900CD31A0 /* ZBQueue.h */,
 				89DD26852201571900CD31A0 /* ZBQueue.m */,
+				8959602025191E7200707DB2 /* ZBQueueViewController.h */,
+				8959602125191E7200707DB2 /* ZBQueueViewController.m */,
 				898B22642516F62400AFC2EF /* ZBQueueTableViewCell.xib */,
 				898B22672516F89000AFC2EF /* ZBQueueTableViewCell.h */,
 				898B22682516F89000AFC2EF /* ZBQueueTableViewCell.m */,
-				8959602025191E7200707DB2 /* ZBQueueViewController.h */,
-				8959602125191E7200707DB2 /* ZBQueueViewController.m */,
 			);
 			path = Queue;
 			sourceTree = "<group>";

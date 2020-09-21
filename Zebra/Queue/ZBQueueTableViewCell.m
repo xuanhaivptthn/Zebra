@@ -7,6 +7,7 @@
 //
 
 #import "ZBQueueTableViewCell.h"
+#import <Extensions/UIImageView+Zebra.h>
 
 @implementation ZBQueueTableViewCell
 
@@ -15,6 +16,7 @@
     
     self.iconView.layer.cornerRadius = 10;
     self.iconView.clipsToBounds = YES;
+    [self.iconView applyBorder];
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {

@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (strong, nonatomic) IBOutlet UILabel *packageNameLabel;
 @property (strong, nonatomic) IBOutlet UILabel *statusLabel;
 @property (strong, nonatomic) IBOutlet UIProgressView *progressView;
-@property (nonatomic) CGFloat progress;
+- (void)setProgress:(CGFloat)progress;
 @end
 
 NS_ASSUME_NONNULL_END
