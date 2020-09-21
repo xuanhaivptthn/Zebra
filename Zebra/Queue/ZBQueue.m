@@ -117,6 +117,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
             break;
     }
     
+    [self.delegate statusUpdate:ZBQueueStatusPreparing forPackage:package inQueue:queue];
     [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
@@ -164,15 +165,15 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 - (void)finishedAllDownloads {}
 
 - (void)startedPackageDownload:(ZBPackage *)package {
-    [_delegate progress:0.0 forPackage:package inQueue:[self locate:package]];
+    [self.delegate statusUpdate:ZBQueueStatusDownloading forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
-    [_delegate progress:progress forPackage:package inQueue:[self locate:package]];
+    [self.delegate progressUpdate:progress forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
-    [_delegate progress:1.0 forPackage:package inQueue:[self locate:package]];
+    [self.delegate statusUpdate:ZBQueueStatusReady forPackage:package inQueue:[self locate:package]];
     [packagesToDownload removeObject:package];
 }
 

@@ -26,12 +26,21 @@ typedef NS_ENUM(NSUInteger, ZBQueueType) {
     ZBQueueTypeDependency
 };
 
+typedef NS_ENUM(NSUInteger, ZBQueueStatus) {
+    ZBQueueStatusPreparing,
+    ZBQueueStatusDependencies,
+    ZBQueueStatusAuthorizing,
+    ZBQueueStatusDownloading,
+    ZBQueueStatusReady
+};
+
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol ZBQueueDelegate
 - (void)packages:(NSArray <ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue;
 - (void)packages:(NSArray <ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue;
-- (void)progress:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
 @end
 
 @interface ZBQueue : NSObject <ZBDownloadDelegate>

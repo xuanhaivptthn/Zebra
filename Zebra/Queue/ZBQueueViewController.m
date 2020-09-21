@@ -95,7 +95,6 @@
     ZBPackage *package = packagesQueued[indexPath.section][indexPath.row];
     
     cell.packageNameLabel.text = package.name;
-    cell.statusLabel.text = @"Ready to install";
     
     [package setIconImageForImageView:cell.iconView];
     return cell;
@@ -126,7 +125,29 @@
     });
 }
 
-- (void)progress:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+- (void)packages:(NSArray<ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
+    });
+}
+
+- (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
+    if (row != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+            [cell setStatus:status];
+            
+            if (status == ZBQueueStatusReady) {
+                NSString *status = [NSString stringWithFormat:@"Ready to %@", [self->queue displayableNameForQueueType:queue].lowercaseString];
+                cell.statusLabel.text = NSLocalizedString(status, @"");
+            }
+        });
+    }
+}
+
+- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
     if (queue == ZBQueueTypeNone) return;
     
     NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
@@ -137,12 +158,6 @@
             [cell setProgress:progress];
         });
     }
-}
-
-- (void)packages:(NSArray<ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
-    });
 }
 
 @end

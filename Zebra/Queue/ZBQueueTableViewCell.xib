@@ -30,18 +30,18 @@
                         <nil key="textColor"/>
                         <nil key="highlightedColor"/>
                     </label>
+                    <progressView hidden="YES" opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="koh-u2-Twp">
+                        <rect key="frame" x="78" y="59" width="316" height="4"/>
+                    </progressView>
                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="cd9-go-IQr">
-                        <rect key="frame" x="78" y="35" width="33" height="16"/>
+                        <rect key="frame" x="78" y="39" width="33" height="16"/>
                         <fontDescription key="fontDescription" type="system" pointSize="13"/>
                         <color key="textColor" systemColor="secondaryLabelColor"/>
                         <nil key="highlightedColor"/>
                     </label>
-                    <progressView hidden="YES" opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="koh-u2-Twp">
-                        <rect key="frame" x="78" y="59" width="316" height="4"/>
-                    </progressView>
                 </subviews>
                 <constraints>
-                    <constraint firstItem="cd9-go-IQr" firstAttribute="top" secondItem="6Vw-Ei-dzX" secondAttribute="top" constant="35" id="6rP-P0-kE9"/>
+                    <constraint firstItem="cd9-go-IQr" firstAttribute="top" secondItem="6Vw-Ei-dzX" secondAttribute="top" constant="39" id="6rP-P0-kE9"/>
                     <constraint firstItem="udc-6l-XfL" firstAttribute="leading" secondItem="8sq-Zw-zqf" secondAttribute="trailing" constant="8" id="9Iq-ar-9t6"/>
                     <constraint firstItem="8sq-Zw-zqf" firstAttribute="leading" secondItem="6Vw-Ei-dzX" secondAttribute="leading" constant="20" id="O09-CL-Xtg"/>
                     <constraint firstItem="cd9-go-IQr" firstAttribute="leading" secondItem="8sq-Zw-zqf" secondAttribute="trailing" constant="8" id="RVC-u8-9e2"/>

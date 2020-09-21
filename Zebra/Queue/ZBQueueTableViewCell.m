@@ -17,6 +17,7 @@
     self.iconView.layer.cornerRadius = 10;
     self.iconView.clipsToBounds = YES;
     [self.iconView applyBorder];
+    [self setStatus:ZBQueueStatusPreparing];
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
@@ -37,15 +38,33 @@
     }
 }
 
+- (void)setStatus:(ZBQueueStatus)status {
+    switch (status) {
+        case ZBQueueStatusPreparing:
+            self.statusLabel.text = NSLocalizedString(@"Preparing...", @"");
+            break;
+        case ZBQueueStatusDependencies:
+            self.statusLabel.text = NSLocalizedString(@"Calculating Dependencies...", @"");
+            break;
+        case ZBQueueStatusAuthorizing:
+            self.statusLabel.text = NSLocalizedString(@"Authorizing Download...", @"");
+            break;
+        case ZBQueueStatusDownloading:
+            self.statusLabel.text = NSLocalizedString(@"Downloading...", @"");
+            self.progressView.alpha = 1.0;
+            self.progressView.progress = 0.0;
+            self.progressView.hidden = NO;
+            break;
+        case ZBQueueStatusReady:
+            self.statusLabel.text = NSLocalizedString(@"Ready to %@", @"");
+            break;
+    }
+}
+
 - (void)prepareForReuse {
     [super prepareForReuse];
     
-    self.progressView.progress = 0.0;
-    self.progressView.alpha = 1.0;
-    self.progressView.hidden = YES;
-    self.statusLabel.text = NSLocalizedString(@"Downloading", @"");
-    self.packageNameLabel.text = @"Package";
-    self.iconView.image = [UIImage imageNamed:@"Tweaks"];
+    self.iconView.image = [UIImage imageNamed:@"Unknown"];
 }
 
 @end
