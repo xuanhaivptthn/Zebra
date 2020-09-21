@@ -252,3 +252,23 @@ Icon: https://getzbra.com/repo/depictions/xyz.willy.Zebra/images/icon.png
 Name: Zebra
 Prefer-Native: Yes
 
+Package: xyz.willy.zebra
+Version: 1.2~beta6a
+Architecture: iphoneos-arm
+Maintainer: Wilson Styres <wilson@styres.me>
+Installed-Size: 34700
+Depends: dpkg, uikittools, firmware (>= 11.0)
+Filename: ./pkgfiles/xyz.willy.zebra_1.2~beta6a_iphoneos-arm.deb
+Size: 13870882
+MD5sum: df41a330fba636e7e337a1bb9e63f284
+SHA1: cf4a3266a02ef6419332014bf10f17f80c2c56c7
+SHA256: e260b6af3181a165009a76a054042394377bcdb4cdaf2333c8174d972f11610a
+Section: Packaging
+Description: A Useful Package Manager
+Tag: compatible_min::ios11.0, compatible_max::ios13.7
+Author: Wilson Styres <wilson@styres.me>
+Depiction: https://getzbra.com/beta/depictions/xyz.willy.Zebra/
+Icon: https://getzbra.com/repo/depictions/xyz.willy.Zebra/images/icon.png
+Name: Zebra
+Prefer-Native: Yes
+
