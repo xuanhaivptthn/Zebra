@@ -10,6 +10,7 @@
 @import CoreGraphics;
 
 #import <Downloads/ZBDownloadDelegate.h>
+#import <Console/ZBCommand.h>
 
 @class ZBQueueViewController;
 @class ZBPackage;
@@ -45,12 +46,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ZBQueue : NSObject <ZBDownloadDelegate>
 @property (readonly) unsigned long long count;
-@property (readonly) unsigned long long downloadsRemaining;
-@property (readonly) BOOL downloading;
-@property (readonly) CGFloat downloadProgress;
 @property (readonly) NSArray <NSArray <ZBPackage *> *> *packages;
 @property (readonly) ZBQueueViewController *controller;
 @property (readonly) NSDictionary *statusMap;
+@property (readonly) NSArray <ZBCommand *> *commands;
 + (instancetype)sharedQueue;
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue;
 - (void)remove:(ZBPackage *)package;

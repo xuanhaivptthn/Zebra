@@ -72,14 +72,6 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return installQueue.count + removeQueue.count + reinstallQueue.count + upgradeQueue.count + downgradeQueue.count + dependencyQueue.count + conflictQueue.count;
 }
 
-- (unsigned long long)downloadsRemaining {
-    return packagesToDownload.count;
-}
-
-- (BOOL)isDownloading {
-    return self.downloadsRemaining > 0;
-}
-
 - (NSArray <NSArray <ZBPackage *> *> *)packages {
     NSMutableArray *packages = [NSMutableArray new];
     
@@ -97,6 +89,72 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     
     statusMap = [NSMutableDictionary new];
     return statusMap;
+}
+
+- (NSArray <ZBCommand *> *)commands {
+    NSMutableArray *commands = [NSMutableArray new];
+    
+    NSMutableArray *removeArguments = [NSMutableArray arrayWithObject:@"-r"];
+    for (ZBPackage *package in [removeQueue arrayByAddingObjectsFromArray:conflictQueue]) {
+        [removeArguments addObject:package.identifier];
+    }
+    if (removeArguments.count > 1) {
+        ZBCommand *removeCommand = [[ZBCommand alloc] init];
+        [removeCommand setCommand:@"/usr/bin/dpkg"];
+        [removeCommand setArguments:removeArguments];
+        [removeCommand setAsRoot:YES];
+        [commands addObject:removeCommand];
+    }
+    
+    NSMutableArray *installArguments = [NSMutableArray arrayWithObject:@"-i"];
+    for (ZBPackage *package in [installQueue arrayByAddingObjectsFromArray:dependencyQueue]) {
+        [installArguments addObject:package.debPath];
+    }
+    if (installArguments.count > 1) {
+        ZBCommand *installCommand = [[ZBCommand alloc] init];
+        [installCommand setCommand:@"/usr/bin/dpkg"];
+        [installCommand setArguments:removeArguments];
+        [installCommand setAsRoot:YES];
+        [commands addObject:installCommand];
+    }
+    
+    NSMutableArray *reinstallArguments = [NSMutableArray arrayWithObject:@"-i"];
+    for (ZBPackage *package in reinstallQueue) {
+        [reinstallArguments addObject:package.debPath];
+    }
+    if (reinstallArguments.count > 1) {
+        ZBCommand *reinstallCommand = [[ZBCommand alloc] init];
+        [reinstallCommand setCommand:@"/usr/bin/dpkg"];
+        [reinstallCommand setArguments:reinstallArguments];
+        [reinstallCommand setAsRoot:YES];
+        [commands addObject:reinstallCommand];
+    }
+    
+    NSMutableArray *upgradeArguments = [NSMutableArray arrayWithObject:@"-i"];
+    for (ZBPackage *package in upgradeQueue) {
+        [upgradeArguments addObject:package.debPath];
+    }
+    if (upgradeArguments.count > 1) {
+        ZBCommand *upgradeCommand = [[ZBCommand alloc] init];
+        [upgradeCommand setCommand:@"/usr/bin/dpkg"];
+        [upgradeCommand setArguments:upgradeArguments];
+        [upgradeCommand setAsRoot:YES];
+        [commands addObject:upgradeCommand];
+    }
+    
+    NSMutableArray *downgradeArugments = [NSMutableArray arrayWithObject:@"-i"];
+    for (ZBPackage *package in downgradeQueue) {
+        [downgradeArugments addObject:package.debPath];
+    }
+    if (downgradeArugments.count > 1) {
+        ZBCommand *downgradeCommand = [[ZBCommand alloc] init];
+        [downgradeCommand setCommand:@"/usr/bin/dpkg"];
+        [downgradeCommand setArguments:downgradeArugments];
+        [downgradeCommand setAsRoot:YES];
+        [commands addObject:downgradeCommand];
+    }
+    
+    return commands;
 }
 
 #pragma mark - Queue Management
