@@ -25,6 +25,8 @@
     NSMutableArray *conflictQueue;
     NSMutableArray *packagesToDownload;
     
+    NSMutableDictionary *statusMap;
+    
     ZBDownloadManager *downloadManager;
 }
 @end
@@ -58,6 +60,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         packagesToDownload = [NSMutableArray new];
         
         downloadManager = [[ZBDownloadManager alloc] initWithDownloadDelegate:self];
+        _controller = [[ZBQueueViewController alloc] init];
     }
     
     return self;
@@ -89,6 +92,13 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return packages;
 }
 
+- (NSDictionary *)statusMap {
+    if (statusMap) return statusMap;
+    
+    statusMap = [NSMutableDictionary new];
+    return statusMap;
+}
+
 #pragma mark - Queue Management
 
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue {
@@ -102,9 +112,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         case ZBQueueTypeDependency:
             if (![package debPath]) { // Packages that are already downloaded will have debPath set
                 [packagesToDownload addObject:package];
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [self->downloadManager downloadPackages:@[package]];
-                });
+                if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [self->downloadManager downloadPackages:@[package]];
             }
         case ZBQueueTypeRemove:
         case ZBQueueTypeConflict: {
@@ -112,12 +120,12 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
             if (![array containsObject:package]) {
                 [array addObject:package];
             }
+            if (queue == ZBQueueTypeRemove || queue == ZBQueueTypeConflict) [self statusUpdate:ZBQueueStatusReady forPackage:package inQueue:queue];
         }
         default:
             break;
     }
     
-    [self.delegate statusUpdate:ZBQueueStatusPreparing forPackage:package inQueue:queue];
     [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
@@ -158,6 +166,13 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return [[self queueForType:queue] containsObject:package];
 }
 
+#pragma mark - Queue Delegate
+
+- (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    [statusMap setObject:@(status) forKey:package.identifier];
+    [self.controller statusUpdate:status forPackage:package inQueue:queue];
+}
+
 #pragma mark - Download Delegate
 
 - (void)startedDownloads {}
@@ -165,15 +180,15 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 - (void)finishedAllDownloads {}
 
 - (void)startedPackageDownload:(ZBPackage *)package {
-    [self.delegate statusUpdate:ZBQueueStatusDownloading forPackage:package inQueue:[self locate:package]];
+    [self statusUpdate:ZBQueueStatusDownloading forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
-    [self.delegate progressUpdate:progress forPackage:package inQueue:[self locate:package]];
+    [self.controller progressUpdate:progress forPackage:package inQueue:[self locate:package]];
 }
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
-    [self.delegate statusUpdate:ZBQueueStatusReady forPackage:package inQueue:[self locate:package]];
+    [self statusUpdate:ZBQueueStatusReady forPackage:package inQueue:[self locate:package]];
     [packagesToDownload removeObject:package];
 }
 

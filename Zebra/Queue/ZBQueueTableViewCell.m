@@ -17,7 +17,7 @@
     self.iconView.layer.cornerRadius = 10;
     self.iconView.clipsToBounds = YES;
     [self.iconView applyBorder];
-    [self setStatus:ZBQueueStatusPreparing];
+    [self setStatus:ZBQueueStatusPreparing queueType:ZBQueueTypeInstall];
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
@@ -38,7 +38,7 @@
     }
 }
 
-- (void)setStatus:(ZBQueueStatus)status {
+- (void)setStatus:(ZBQueueStatus)status queueType:(ZBQueueType)queue {
     switch (status) {
         case ZBQueueStatusPreparing:
             self.statusLabel.text = NSLocalizedString(@"Preparing...", @"");
@@ -55,9 +55,11 @@
             self.progressView.progress = 0.0;
             self.progressView.hidden = NO;
             break;
-        case ZBQueueStatusReady:
-            self.statusLabel.text = NSLocalizedString(@"Ready to %@", @"");
+        case ZBQueueStatusReady: {
+            NSString *status = [NSString stringWithFormat:@"Ready to %@", [[ZBQueue sharedQueue] displayableNameForQueueType:queue].lowercaseString];
+            self.statusLabel.text = NSLocalizedString(status, @"");
             break;
+        }
     }
 }
 

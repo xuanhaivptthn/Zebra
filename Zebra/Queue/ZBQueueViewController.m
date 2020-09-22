@@ -6,18 +6,21 @@
 //  Copyright © 2019 Wilson Styres. All rights reserved.
 //
 
+@import LNPopupController;
+
 #import "ZBQueueViewController.h"
 
 #import "ZBQueue.h"
 #import "ZBQueueTableViewCell.h"
 
+#import <Tabs/ZBTabBarController.h>
 #import <Tabs/Packages/Helpers/ZBPackage.h>
 #import <Tabs/Packages/Views/ZBBoldTableViewHeaderView.h>
+#import <ZBAppDelegate.h>
 
 @import LNPopupController;
 
 @interface ZBQueueViewController () {
-    ZBQueue *queue;
     NSArray <NSArray <ZBPackage *> *> *packagesQueued;
 }
 @end
@@ -31,9 +34,6 @@
     
     if (self) {
         self.title = NSLocalizedString(@"Queue", @"");
-        queue = [ZBQueue sharedQueue];
-        queue.delegate = self;
-        packagesQueued = queue.packages;
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueue) name:@"ZBQueueUpdate" object:nil];
     }
@@ -50,16 +50,44 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    UIBarButtonItem *dismissItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"Chevron Down"] style:UIBarButtonItemStylePlain target:self action:@selector(dismiss)];
+    UIBarButtonItem *clearItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Clear", @"") style:UIBarButtonItemStylePlain target:self action:@selector(clearQueue:)];
+    self.navigationItem.leftBarButtonItems = @[dismissItem, clearItem];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Confirm", @"") style:UIBarButtonItemStyleDone target:self action:@selector(confirm)];
+    
     [[UITableView appearance] setBackgroundColor:[UIColor whiteColor]];
     [self.tableView setTableFooterView:[UIView new]];
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBQueueTableViewCell" bundle:nil] forCellReuseIdentifier:@"queueTableViewCell"];
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBBoldTableViewHeaderView" bundle:nil] forHeaderFooterViewReuseIdentifier:@"BoldTableViewHeaderView"];
 }
 
+- (void)dismiss {
+    [[ZBAppDelegate tabBarController] closePopupAnimated:YES completion:nil];
+}
+
+- (void)clearQueue:(id)sender {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Are you sure?", @"") message:NSLocalizedString(@"Are you sure you want to clear the Queue?", @"") preferredStyle:UIAlertControllerStyleActionSheet];
+        
+    UIAlertAction *confirm = [UIAlertAction actionWithTitle:NSLocalizedString(@"Confirm", @"") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        [[ZBQueue sharedQueue] clear];
+    }];
+    [alert addAction:confirm];
+        
+    UIAlertAction *cancel = [UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", @"") style:UIAlertActionStyleCancel handler:nil];
+    [alert addAction:cancel];
+        
+    alert.popoverPresentationController.barButtonItem = sender;
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)confirm {
+    
+}
+
 #pragma mark - Popup Bar Management
 
 - (void)updateQueue {
-    packagesQueued = queue.packages;
+    packagesQueued = [ZBQueue sharedQueue].packages;
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadData];
@@ -96,6 +124,9 @@
     
     cell.packageNameLabel.text = package.name;
     
+    ZBQueueStatus status = [[[[ZBQueue sharedQueue] statusMap] objectForKey:package.identifier] unsignedIntegerValue];
+    [cell setStatus:status queueType:indexPath.section + 1];
+    
     [package setIconImageForImageView:cell.iconView];
     return cell;
 }
@@ -114,35 +145,36 @@
 }
 
 - (NSString *)titleForHeaderInSection:(NSInteger)section {
-    return [queue displayableNameForQueueType:section + 1];
+    return [[ZBQueue sharedQueue] displayableNameForQueueType:section + 1];
 }
 
 #pragma mark - Queue Delegate
 
 - (void)packages:(NSArray<ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue {
+    if (queue == ZBQueueTypeNone) return;
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
     });
 }
 
 - (void)packages:(NSArray<ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
+    if (queue == ZBQueueTypeNone) return;
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
     });
 }
 
 - (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    if (queue == ZBQueueTypeNone) return;
+    
     NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
     if (row != NSNotFound) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
         dispatch_async(dispatch_get_main_queue(), ^{
             ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-            [cell setStatus:status];
-            
-            if (status == ZBQueueStatusReady) {
-                NSString *status = [NSString stringWithFormat:@"Ready to %@", [self->queue displayableNameForQueueType:queue].lowercaseString];
-                cell.statusLabel.text = NSLocalizedString(status, @"");
-            }
+            [cell setStatus:status queueType:indexPath.section + 1];
         });
     }
 }
