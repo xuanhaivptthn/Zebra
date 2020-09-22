@@ -585,32 +585,21 @@
                 }
             }
             else {
-                NSString *debsPath = [ZBAppDelegate debsLocation];
-                NSString *filename = [NSString stringWithFormat:@"%@_%@.deb", [package identifier], [package version]];
-                if ([filename containsString:@":"]) filename = [filename stringByReplacingOccurrencesOfString:@":" withString:@"e"]; //Replace : with e (for epoch) because apt doesn't like colons much
-                NSString *finalPath = [debsPath stringByAppendingPathComponent:filename];
+//                NSString *debsPath = [ZBAppDelegate debsLocation];
+//                NSString *filename = [NSString stringWithFormat:@"%@_%@.deb", [package identifier], [package version]];
+//                if ([filename containsString:@":"]) filename = [filename stringByReplacingOccurrencesOfString:@":" withString:@"e"]; //Replace : with e (for epoch) because apt doesn't like colons much
+//                NSString *finalPath = [debsPath stringByAppendingPathComponent:filename];
                 
-                [self moveFileFromLocation:location to:finalPath completion:^(NSError *error) {
-                    ZBPackage *package = self->packageTasksMap[@(downloadTask.taskIdentifier)];
-                    if (error) {
-                        [self cancelAllTasksForSession:self->session];
-                        NSString *text = [NSString stringWithFormat:[NSString stringWithFormat:@"[Zebra] %@: %%@\n", NSLocalizedString(@"Error while moving file at %@ to %@", @"")], location, finalPath, error.localizedDescription];
-                        [self->downloadDelegate postStatusUpdate:text atLevel:ZBLogLevelError];
+                ZBPackage *package = self->packageTasksMap[@(downloadTask.taskIdentifier)];
+                package.debPath = [location path];
                         
-                        [self->downloadDelegate finishedPackageDownload:package withError:error];
-                    } else {
-                        package.debPath = finalPath;
-                        
-                        [self->downloadDelegate finishedPackageDownload:package withError:nil];
-                    }
-                    
-                    [self->packageTasksMap removeObjectForKey:@(downloadTask.taskIdentifier)];
-                    
-                    if (![self->packageTasksMap count]) {
-                        [self->downloadDelegate finishedAllDownloads];
-                        [session finishTasksAndInvalidate];
-                    }
-                }];
+                [self->downloadDelegate finishedPackageDownload:package withError:nil];
+                [self->packageTasksMap removeObjectForKey:@(downloadTask.taskIdentifier)];
+                
+                if (![self->packageTasksMap count]) {
+                    [self->downloadDelegate finishedAllDownloads];
+                    [session finishTasksAndInvalidate];
+                }
             }
             break;
         }
