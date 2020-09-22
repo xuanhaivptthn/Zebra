@@ -74,7 +74,7 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         CFStringRef udidCF = (CFStringRef)MGCopyAnswer(kMGUniqueDeviceID);
-        udid = (__bridge NSString *)udidCF;
+        udid = (__bridge_transfer NSString *)udidCF;
         if (udid == NULL) {
             // send a fake UDID in case this is a simulator
             udid = [[[UIDevice currentDevice] identifierForVendor] UUIDString];

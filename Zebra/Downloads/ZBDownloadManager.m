@@ -98,6 +98,7 @@
             
             [downloadDelegate finishedDownloadingSource:source withError:NULL];
             if (!sourceTasksMap.count && sources.count == 1) {
+                [session finishTasksAndInvalidate];
                 [downloadDelegate finishedAllDownloads];
             }
         } else {
@@ -106,6 +107,7 @@
             source.releaseTaskIdentifier = releaseTask.taskIdentifier;
             [sourceTasksMap setObject:source forKey:@(releaseTask.taskIdentifier)];
             [releaseTask resume];
+            [session finishTasksAndInvalidate];
             
             [self downloadPackagesFileWithExtension:@"bz2" fromSource:source ignoreCaching:ignore];
             
@@ -132,6 +134,7 @@
     source.packagesTaskIdentifier = packagesTask.taskIdentifier;
     [sourceTasksMap setObject:source forKey:@(packagesTask.taskIdentifier)];
     [packagesTask resume];
+    [session finishTasksAndInvalidate];
 }
 
 #pragma mark - Downloading Packages
@@ -168,6 +171,7 @@
         if (url && url.host && url.scheme) {
             NSURLSessionDownloadTask *downloadTask = [session downloadTaskWithURL:url];
             [downloadTask resume];
+            [session finishTasksAndInvalidate];
             
             [packageTasksMap setObject:package forKey:@(downloadTask.taskIdentifier)];
             [downloadDelegate startedPackageDownload:package];
@@ -177,6 +181,7 @@
                 if (downloadURL && !error && self->session != nil) {
                     NSURLSessionDownloadTask *downloadTask = [self->session downloadTaskWithURL:downloadURL];
                     [downloadTask resume];
+                    [self->session finishTasksAndInvalidate];
                     
                     [self->packageTasksMap setObject:package forKey:@(downloadTask.taskIdentifier)];
                     [self->downloadDelegate startedPackageDownload:package];
@@ -195,6 +200,7 @@
             
             NSURLSessionTask *downloadTask = [session downloadTaskWithURL:base];
             [downloadTask resume];
+            [session finishTasksAndInvalidate];
             
             [self->packageTasksMap setObject:package forKey:@(downloadTask.taskIdentifier)];
             [downloadDelegate startedPackageDownload:package];
@@ -254,6 +260,7 @@
     }];
     
     [task resume];
+    [session finishTasksAndInvalidate];
 }
 
 #pragma mark - Handling Downloaded Files
@@ -351,6 +358,7 @@
     
     if (!sourceTasksMap.count) {
         [downloadDelegate finishedAllDownloads];
+        [session finishTasksAndInvalidate];
     }
 }
 
@@ -368,8 +376,7 @@
         }
     }
     
-    // FIXME: this value is never used
-    movedFileSuccess = [fileManager moveItemAtURL:location toURL:[NSURL fileURLWithPath:finalPath] error:&fileManagerError];
+    [fileManager moveItemAtURL:location toURL:[NSURL fileURLWithPath:finalPath] error:&fileManagerError];
     
     if (completion) {
         completion(fileManagerError);
@@ -601,6 +608,7 @@
                     
                     if (![self->packageTasksMap count]) {
                         [self->downloadDelegate finishedAllDownloads];
+                        [session finishTasksAndInvalidate];
                     }
                 }];
             }
@@ -611,6 +619,7 @@
             [downloadDelegate postStatusUpdate:text atLevel:ZBLogLevelError];
             
             [downloadDelegate finishedAllDownloads];
+            [session finishTasksAndInvalidate];
             break;
         }
     }
@@ -904,6 +913,7 @@
                 [task cancel];
             }
         }
+        [self->session invalidateAndCancel];
     }];
 }
 
