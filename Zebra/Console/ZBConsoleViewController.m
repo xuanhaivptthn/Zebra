@@ -164,10 +164,6 @@
 
 #pragma mark - Button Actions
 
-- (void)cancel {
-    [self setStage:ZBStageFinished];
-}
-
 - (void)close {
     [[ZBAppDelegate tabBarController] dismissPopupBarAnimated:YES completion:nil];
 }
@@ -185,7 +181,7 @@
 }
 
 - (void)closeZebra {
-    [ZBDevice exitZebraAfter:3];
+    [ZBDevice exitZebraAfter:1];
     if (![ZBDevice needsSimulation]) {
         if (applicationBundlePaths.count > 1) {
             [self updateIconCaches];
@@ -244,10 +240,6 @@
         default:
             break;
     }
-}
-
-- (BOOL)isValidPackageID:(NSString *)packageID {
-    return ![packageID hasPrefix:@"-"] && ![packageID isEqualToString:@"install"] && ![packageID isEqualToString:@"remove"];
 }
 
 - (void)removeAllDebs {
