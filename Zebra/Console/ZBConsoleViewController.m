@@ -164,7 +164,7 @@
 
 #pragma mark - Button Actions
 
-- (void)close {
+- (IBAction)close:(id)sender {
     [[ZBAppDelegate tabBarController] dismissPopupBarAnimated:YES completion:nil];
 }
 
@@ -195,7 +195,7 @@
     if (![ZBDevice needsSimulation]) {
         [ZBDevice restartSpringBoard];
     } else {
-        [self close];
+        [self close:self];
     }
 }
 
@@ -322,7 +322,7 @@
             } else if (self->zebraRestartRequired) {
                 [self closeZebra];
             } else {
-                [self close];
+                [self close:self];
             }
         };
 
