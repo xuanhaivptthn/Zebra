@@ -167,19 +167,19 @@
 }
 
 + (void)install:(ZBPackage *)package completion:(void (^)(void))completion {
-    [[ZBQueue sharedQueue] add:package to:ZBQueueTypeInstall];
+    [[ZBQueue sharedQueue] addPackage:package toQueue:ZBQueueTypeInstall];
     if (completion) completion();
 }
 
 + (void)remove:(ZBPackage *)package completion:(void (^)(void))completion {
-    [[ZBQueue sharedQueue] add:package to:ZBQueueTypeRemove];
+    [[ZBQueue sharedQueue] addPackage:package toQueue:ZBQueueTypeRemove];
     if (completion) completion();
 }
 
 + (void)reinstall:(ZBPackage *)package completion:(void (^)(void))completion {
     ZBPackage *candidate = [[ZBDatabaseManager sharedInstance] packageForID:package.identifier equalVersion:package.installedVersion];
     if (candidate) {
-        [[ZBQueue sharedQueue] add:candidate to:ZBQueueTypeReinstall];
+        [[ZBQueue sharedQueue] addPackage:candidate toQueue:ZBQueueTypeReinstall];
     }
     if (completion) completion();
 }
@@ -197,7 +197,7 @@
         NSString *title = [self determinePackageTitle:otherPackage versionStrings:versionStrings withLatest:otherPackage == allVersions[0]];
         UIAlertAction *action = [UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
             [otherPackage setRequiresAuthorization:[package requiresAuthorization]];
-            [[ZBQueue sharedQueue] add:otherPackage to:ZBQueueTypeInstall];
+            [[ZBQueue sharedQueue] addPackage:otherPackage toQueue:ZBQueueTypeInstall];
             
             if (completion) completion();
         }];
@@ -226,7 +226,7 @@
             NSString *title = [self determinePackageTitle:otherPackage versionStrings:versionStrings withLatest:NO];
             UIAlertAction *action = [UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 [otherPackage setRequiresAuthorization:[package requiresAuthorization]];
-                [[ZBQueue sharedQueue] add:otherPackage to:ZBQueueTypeUpgrade];
+                [[ZBQueue sharedQueue] addPackage:otherPackage toQueue:ZBQueueTypeUpgrade];
                 
                 if (completion) completion();
             }];
@@ -241,7 +241,7 @@
     }
     else {
         ZBPackage *upgrade = [greaterVersions count] == 1 ? greaterVersions[0] : package;
-        [[ZBQueue sharedQueue] add:upgrade to:ZBQueueTypeUpgrade];
+        [[ZBQueue sharedQueue] addPackage:upgrade toQueue:ZBQueueTypeUpgrade];
         
         if (completion) completion();
     }
@@ -263,7 +263,7 @@
             NSString *title = [self determinePackageTitle:otherPackage versionStrings:versionStrings withLatest:NO];
             UIAlertAction *action = [UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 [otherPackage setRequiresAuthorization:[package requiresAuthorization]];
-                [[ZBQueue sharedQueue] add:otherPackage to:ZBQueueTypeDowngrade];
+                [[ZBQueue sharedQueue] addPackage:otherPackage toQueue:ZBQueueTypeDowngrade];
                 if (completion) completion();
             }];
             
@@ -277,7 +277,7 @@
     }
     else {
         ZBPackage *upgrade = [lesserVersions count] == 1 ? lesserVersions[0] : package;
-        [[ZBQueue sharedQueue] add:upgrade to:ZBQueueTypeDowngrade];
+        [[ZBQueue sharedQueue] addPackage:upgrade toQueue:ZBQueueTypeDowngrade];
         
         if (completion) completion();
     }

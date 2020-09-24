@@ -160,7 +160,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 #pragma mark - Queue Management
 
-- (void)add:(ZBPackage *)package to:(ZBQueueType)queue {
+- (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue {
     if (queue == ZBQueueTypeNone) return;
     
     switch(queue) {
@@ -188,11 +188,11 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
 }
 
-- (void)remove:(ZBPackage *)package {
-    [self remove:package from:[self locate:package]];
+- (void)removePackage:(ZBPackage *)package {
+    [self removePackage:package fromQueue:[self locate:package]];
 }
 
-- (void)remove:(ZBPackage *)package from:(ZBQueueType)queue {
+- (void)removePackage:(ZBPackage *)package fromQueue:(ZBQueueType)queue {
     if (queue == ZBQueueTypeNone) return;
     
     switch(queue) {
@@ -225,7 +225,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return [[self queueForType:queue] containsObject:package];
 }
 
-- (void)clear {
+- (void)removeAllPackages {
     [installQueue removeAllObjects];
     [removeQueue removeAllObjects];
     [reinstallQueue removeAllObjects];

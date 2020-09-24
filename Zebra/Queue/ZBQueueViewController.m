@@ -71,7 +71,7 @@
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Are you sure?", @"") message:NSLocalizedString(@"Are you sure you want to clear the Queue?", @"") preferredStyle:UIAlertControllerStyleActionSheet];
         
     UIAlertAction *confirm = [UIAlertAction actionWithTitle:NSLocalizedString(@"Confirm", @"") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        [[ZBQueue sharedQueue] clear];
+        [[ZBQueue sharedQueue] removeAllPackages];
     }];
     [alert addAction:confirm];
         
@@ -156,7 +156,7 @@
     
     UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:NSLocalizedString(@"Delete", @"") handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
         NSError *error = NULL;
-        [[ZBQueue sharedQueue] remove:package from:indexPath.section + 1];
+        [[ZBQueue sharedQueue] removePackage:package fromQueue:indexPath.section + 1];
         
         completionHandler(error == NULL);
     }];

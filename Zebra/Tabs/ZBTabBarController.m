@@ -49,7 +49,7 @@
         sourceRefreshIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:12];
         sourceRefreshIndicator.color = [UIColor whiteColor];
         
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueueBar) name:@"ZBQueueUpdate" object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(presentPopupBar) name:@"ZBQueueUpdate" object:nil];
     }
     
     return self;
@@ -102,9 +102,6 @@
         UITabBarItem *sourcesItem = [sourcesController tabBarItem];
         [sourcesItem setAnimatedBadge:visible];
         if (visible) {
-//            if (self->sourcesUpdating) {
-//                return;
-//            }
             sourcesItem.badgeValue = @"";
             
             UIView *badge = [[sourcesItem view] valueForKey:@"_badge"];
@@ -112,10 +109,8 @@
             self->sourceRefreshIndicator.center = badge.center;
             [self->sourceRefreshIndicator startAnimating];
             [badge addSubview:self->sourceRefreshIndicator];
-//            self->sourcesUpdating = YES;
         } else {
             sourcesItem.badgeValue = nil;
-//            self->sourcesUpdating = NO;
         }
     });
 }
@@ -148,21 +143,10 @@
 
 #pragma mark - Queue Popup Bar
 
-- (void)updateQueueBar {
+- (void)presentPopupBar {
+    if (self.popupPresentationState != LNPopupPresentationStateBarHidden) return;
+    
     dispatch_async(dispatch_get_main_queue(), ^{
-        self.popupContentView.popupCloseButtonStyle = LNPopupCloseButtonStyleNone;
-        [self presentPopupBarWithContentViewController:[[UINavigationController alloc] initWithRootViewController:[ZBQueue sharedQueue].controller] animated:YES completion:nil];
-    });
-}
-
-- (void)openQueue:(BOOL)openPopup {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        LNPopupPresentationState state = self.popupPresentationState;
-        if (state == LNPopupPresentationStateTransitioning || (openPopup && state == LNPopupPresentationStateOpen) || (!openPopup && (state == LNPopupPresentationStateOpen || state == LNPopupPresentationStateClosed))) {
-            return;
-        }
-
-        self.popupInteractionStyle = LNPopupInteractionStyleSnap;
         self.popupContentView.popupCloseButtonStyle = LNPopupCloseButtonStyleNone;
         
         UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleHoldGesture:)];
@@ -170,7 +154,7 @@
         longPress.delegate = self;
         
         [self.popupBar addGestureRecognizer:longPress];
-//        [self presentPopupBarWithContentViewController:self.popupController openPopup:openPopup animated:YES completion:nil];
+        [self presentPopupBarWithContentViewController:[[UINavigationController alloc] initWithRootViewController:[ZBQueue sharedQueue].controller] animated:YES completion:nil];
     });
 }
 
@@ -179,9 +163,7 @@
         UIAlertController *clearQueue = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Clear Queue", @"") message:NSLocalizedString(@"Are you sure you want to clear the Queue?", @"") preferredStyle:UIAlertControllerStyleAlert];
         
         UIAlertAction *yesAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Yes", @"") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-            
-            // TODO: Reimplement clear
-//            [[ZBQueue sharedQueue] clear];
+            [[ZBQueue sharedQueue] removeAllPackages];
         }];
         [clearQueue addAction:yesAction];
         
@@ -190,7 +172,6 @@
         
         [self presentViewController:clearQueue animated:YES completion:nil];
     }
-    
 }
 
 - (void)requestSourceRefresh {

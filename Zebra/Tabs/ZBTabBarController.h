@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString * _Nullable forwardToPackageID;
 @property (nonatomic, strong) NSString * _Nullable forwardedSourceBaseURL;
 - (void)openQueue:(BOOL)openPopup;
-- (void)updateQueueBar;
+- (void)presentPopupBar;
 - (void)forwardToPackage;
 - (void)updateQueueBarPackageCount:(int)count;
 - (void)closeQueue;

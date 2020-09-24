@@ -41,7 +41,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)packages:(NSArray <ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue;
 - (void)packages:(NSArray <ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue;
 - (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (void)startedDownloadForPackage:(ZBPackage *)package;
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (void)finishedDownloadForPackage:(ZBPackage *)package error:(NSError *)error;
 @end
 
 @interface ZBQueue : NSObject <ZBDownloadDelegate>
@@ -51,12 +53,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly) NSDictionary *statusMap;
 @property (readonly) NSArray <NSArray *> *commands;
 + (instancetype)sharedQueue;
-- (void)add:(ZBPackage *)package to:(ZBQueueType)queue;
-- (void)remove:(ZBPackage *)package;
-- (void)remove:(ZBPackage *)package from:(ZBQueueType)queue;
+- (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue;
+- (void)removePackage:(ZBPackage *)package;
+- (void)removePackage:(ZBPackage *)package fromQueue:(ZBQueueType)queue;
 - (ZBQueueType)locate:(ZBPackage *)package;
 - (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue;
-- (void)clear;
+- (void)removeAllPackages;
 - (NSArray <ZBPackage *> *)packagesToRemove;
 - (NSArray <ZBPackage *> *)packagesToInstall;
 - (NSString *)displayableNameForQueueType:(ZBQueueType)queue;

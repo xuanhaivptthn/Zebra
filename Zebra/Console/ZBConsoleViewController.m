@@ -171,12 +171,12 @@
 #pragma mark - Package Finishing Actions
 
 - (void)updateIconCaches {
-    [self writeToConsole:NSLocalizedString(@"Updating icon cache asynchronously...", @"") atLevel:ZBLogLevelInfo];
+    [self writeToConsole:NSLocalizedString(@"Updating icon cache...", @"") atLevel:ZBLogLevelInfo];
     
     if (![ZBDevice needsSimulation]) {
         [ZBDevice uicache:applicationBundlePaths];
     } else {
-        [self writeToConsole:NSLocalizedString(@"uicache is not available on the simulator", @"") atLevel:ZBLogLevelWarning];
+        [self writeToConsole:@"uicache is not available on the simulator" atLevel:ZBLogLevelWarning];
     }
 }
 
@@ -225,10 +225,11 @@
             [self updateTitle:NSLocalizedString(@"Downgrading", @"")];
             [self writeToConsole:NSLocalizedString(@"Downgrading Packages...", @"") atLevel:ZBLogLevelInfo];
             break;
-        case ZBStageFinished:
+        case ZBStageFinished: {
             [self updateTitle:NSLocalizedString(@"Complete", @"")];
             [self writeToConsole:NSLocalizedString(@"Finished!", @"") atLevel:ZBLogLevelInfo];
-            [[ZBQueue sharedQueue] clear];
+            
+            [[ZBQueue sharedQueue] removeAllPackages];
             [self updateCompleteButton];
             [self removeAllDebs];
             [applicationBundlePaths removeAllObjects];
@@ -237,6 +238,7 @@
                 [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
             });
             break;
+        }
         default:
             break;
     }
