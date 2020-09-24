@@ -226,7 +226,15 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 }
 
 - (void)clear {
+    [installQueue removeAllObjects];
+    [removeQueue removeAllObjects];
+    [reinstallQueue removeAllObjects];
+    [upgradeQueue removeAllObjects];
+    [downgradeQueue removeAllObjects];
+    [dependencyQueue removeAllObjects];
+    [conflictQueue removeAllObjects];
     
+    [packagesToDownload removeAllObjects];
 }
 
 - (NSArray <ZBPackage *> *)packagesToRemove {
