@@ -792,7 +792,7 @@
                             <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                             <items>
                                 <barButtonItem style="plain" id="NFk-Mn-X1c">
-                                    <segmentedControl key="customView" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" segmentControlStyle="bar" selectedSegmentIndex="0" id="Zm7-sp-XkJ">
+                                    <segmentedControl key="customView" opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" segmentControlStyle="bar" selectedSegmentIndex="0" id="Zm7-sp-XkJ">
                                         <rect key="frame" x="20" y="6" width="374" height="32"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES"/>
                                         <segments>
@@ -846,71 +846,6 @@
             </objects>
             <point key="canvasLocation" x="3348" y="-1687"/>
         </scene>
-        <!--Queue-->
-        <scene sceneID="WI4-4c-3EM">
-            <objects>
-                <tableViewController storyboardIdentifier="queueController" useStoryboardIdentifierAsRestorationIdentifier="YES" id="Utk-Km-MBH" customClass="ZBQueueViewController" sceneMemberID="viewController">
-                    <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" allowsSelection="NO" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" id="bJy-9H-FBb">
-                        <rect key="frame" x="0.0" y="0.0" width="414" height="808"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                        <prototypes>
-                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" indentationWidth="10" reuseIdentifier="QueuePackageTableViewCell" textLabel="Veu-eR-jvK" detailTextLabel="Qre-6t-1Jn" style="IBUITableViewCellStyleSubtitle" id="Zip-d4-w6n">
-                                <rect key="frame" x="0.0" y="28" width="414" height="55.5"/>
-                                <autoresizingMask key="autoresizingMask"/>
-                                <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="Zip-d4-w6n" id="tA3-be-ms8">
-                                    <rect key="frame" x="0.0" y="0.0" width="414" height="55.5"/>
-                                    <autoresizingMask key="autoresizingMask"/>
-                                    <subviews>
-                                        <label opaque="NO" multipleTouchEnabled="YES" contentMode="left" insetsLayoutMarginsFromSafeArea="NO" text="Title" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="Veu-eR-jvK">
-                                            <rect key="frame" x="20" y="10" width="33" height="20.5"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                            <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                            <nil key="textColor"/>
-                                            <nil key="highlightedColor"/>
-                                        </label>
-                                        <label opaque="NO" multipleTouchEnabled="YES" contentMode="left" insetsLayoutMarginsFromSafeArea="NO" text="Subtitle" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="Qre-6t-1Jn">
-                                            <rect key="frame" x="20" y="31.5" width="44" height="14.5"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                            <fontDescription key="fontDescription" type="system" pointSize="12"/>
-                                            <nil key="textColor"/>
-                                            <nil key="highlightedColor"/>
-                                        </label>
-                                    </subviews>
-                                </tableViewCellContentView>
-                            </tableViewCell>
-                        </prototypes>
-                        <connections>
-                            <outlet property="dataSource" destination="Utk-Km-MBH" id="2FN-T4-M0P"/>
-                            <outlet property="delegate" destination="Utk-Km-MBH" id="Ltl-xT-4cm"/>
-                        </connections>
-                    </tableView>
-                    <extendedEdge key="edgesForExtendedLayout" bottom="YES"/>
-                    <navigationItem key="navigationItem" title="Queue" id="uSZ-TC-nHR">
-                        <leftBarButtonItems>
-                            <barButtonItem image="Chevron Down" id="al0-qb-ba3">
-                                <connections>
-                                    <action selector="dismissQueue:" destination="Utk-Km-MBH" id="5ty-3Y-xq6"/>
-                                </connections>
-                            </barButtonItem>
-                            <barButtonItem title="Clear" id="1ny-vH-ulE">
-                                <connections>
-                                    <action selector="clearQueue:" destination="Utk-Km-MBH" id="pgn-3p-LDZ"/>
-                                </connections>
-                            </barButtonItem>
-                        </leftBarButtonItems>
-                        <barButtonItem key="rightBarButtonItem" title="Confirm" style="done" id="vfP-8Y-pVN">
-                            <connections>
-                                <action selector="confirm:" destination="Utk-Km-MBH" id="D4f-Yh-0xC"/>
-                            </connections>
-                        </barButtonItem>
-                    </navigationItem>
-                    <simulatedNavigationBarMetrics key="simulatedTopBarMetrics" translucent="NO" prompted="NO"/>
-                </tableViewController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="8z6-pw-5WD" userLabel="First Responder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="8009" y="-287"/>
-        </scene>
         <!--Console View Controller-->
         <scene sceneID="A6v-hn-Vlw">
             <objects>
@@ -923,24 +858,15 @@
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <progressView opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="750" progress="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="Mo4-QY-oSm">
-                                <rect key="frame" x="20" y="792" width="374" height="4"/>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" ambiguous="YES" editable="NO" selectable="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lpS-Lu-3mG">
+                                <rect key="frame" x="20" y="44" width="374" height="718"/>
                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <color key="progressTintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <color key="trackTintColor" white="0.66666666666666663" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                            </progressView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="center" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Progress Text" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BuP-O1-Zgo">
-                                <rect key="frame" x="171" y="770" width="72" height="14"/>
-                                <color key="backgroundColor" white="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <accessibility key="accessibilityConfiguration">
-                                    <accessibilityTraits key="traits" staticText="YES" notEnabled="YES" updatesFrequently="YES"/>
-                                </accessibility>
-                                <fontDescription key="fontDescription" type="system" pointSize="11"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <nil key="highlightedColor"/>
-                            </label>
+                                <fontDescription key="fontDescription" name="Courier" family="Courier" pointSize="12"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
                             <button hidden="YES" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Dwm-vr-TSr">
-                                <rect key="frame" x="20" y="804" width="374" height="50"/>
+                                <rect key="frame" x="20" y="812" width="374" height="50"/>
                                 <color key="backgroundColor" red="0.40000000000000002" green="0.50196078430000002" blue="0.97647058819999999" alpha="1" colorSpace="calibratedRGB"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="50" id="HcX-c1-SLl"/>
@@ -956,27 +882,14 @@
                                     </userDefinedRuntimeAttribute>
                                 </userDefinedRuntimeAttributes>
                             </button>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" editable="NO" selectable="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lpS-Lu-3mG">
-                                <rect key="frame" x="20" y="44" width="374" height="718"/>
-                                <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <fontDescription key="fontDescription" name="Courier" family="Courier" pointSize="12"/>
-                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
-                            </textView>
                         </subviews>
                         <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
-                            <constraint firstItem="Mo4-QY-oSm" firstAttribute="trailing" secondItem="Dwm-vr-TSr" secondAttribute="trailing" id="0u7-SS-DpM"/>
-                            <constraint firstItem="BuP-O1-Zgo" firstAttribute="top" secondItem="lpS-Lu-3mG" secondAttribute="bottom" constant="8" id="4Fz-Ga-3j3"/>
-                            <constraint firstItem="BuP-O1-Zgo" firstAttribute="centerX" secondItem="Mo4-QY-oSm" secondAttribute="centerX" id="79r-f7-LVr"/>
-                            <constraint firstItem="lpS-Lu-3mG" firstAttribute="trailing" secondItem="Mo4-QY-oSm" secondAttribute="trailing" id="Izs-y4-2TW"/>
                             <constraint firstItem="lpS-Lu-3mG" firstAttribute="top" secondItem="4S3-dv-b0f" secondAttribute="topMargin" id="RkW-VJ-x4b"/>
-                            <constraint firstItem="Mo4-QY-oSm" firstAttribute="leading" secondItem="Dwm-vr-TSr" secondAttribute="leading" id="S97-7L-GlK"/>
-                            <constraint firstItem="yRT-0e-41R" firstAttribute="top" secondItem="Dwm-vr-TSr" secondAttribute="bottom" constant="8" id="Y96-Ry-qrP"/>
-                            <constraint firstItem="lpS-Lu-3mG" firstAttribute="leading" secondItem="Mo4-QY-oSm" secondAttribute="leading" id="dbM-34-eXA"/>
+                            <constraint firstItem="Dwm-vr-TSr" firstAttribute="trailing" secondItem="4S3-dv-b0f" secondAttribute="trailingMargin" id="Y1U-P3-fTY"/>
+                            <constraint firstItem="yRT-0e-41R" firstAttribute="top" secondItem="Dwm-vr-TSr" secondAttribute="bottom" id="Y96-Ry-qrP"/>
+                            <constraint firstItem="Dwm-vr-TSr" firstAttribute="leading" secondItem="4S3-dv-b0f" secondAttribute="leadingMargin" id="ahp-gf-aJ0"/>
                             <constraint firstItem="lpS-Lu-3mG" firstAttribute="leading" secondItem="4S3-dv-b0f" secondAttribute="leadingMargin" id="iVw-tZ-Pcw"/>
-                            <constraint firstItem="Dwm-vr-TSr" firstAttribute="top" secondItem="Mo4-QY-oSm" secondAttribute="bottom" constant="8" id="pqz-q1-7Uq"/>
-                            <constraint firstItem="Mo4-QY-oSm" firstAttribute="top" secondItem="BuP-O1-Zgo" secondAttribute="bottom" constant="8" id="wCU-2b-VLV"/>
                             <constraint firstItem="lpS-Lu-3mG" firstAttribute="trailing" secondItem="4S3-dv-b0f" secondAttribute="trailingMargin" id="yzE-SA-aAG"/>
                         </constraints>
                     </view>
@@ -989,11 +902,9 @@
                         </barButtonItem>
                     </navigationItem>
                     <connections>
-                        <outlet property="cancelOrCloseButton" destination="4Ec-af-JZg" id="DPY-yz-vMJ"/>
+                        <outlet property="closeButton" destination="4Ec-af-JZg" id="DPY-yz-vMJ"/>
                         <outlet property="completeButton" destination="Dwm-vr-TSr" id="pUE-50-T7j"/>
                         <outlet property="consoleView" destination="lpS-Lu-3mG" id="HdC-0Y-Hug"/>
-                        <outlet property="progressText" destination="BuP-O1-Zgo" id="fz7-VU-Op6"/>
-                        <outlet property="progressView" destination="Mo4-QY-oSm" id="Ny2-Rh-LsX"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Klv-G8-GIq" userLabel="First Responder" sceneMemberID="firstResponder"/>
@@ -1107,7 +1018,6 @@
     </inferredMetricsTieBreakers>
     <resources>
         <image name="Changes" width="25" height="25"/>
-        <image name="Chevron Down" width="27.5" height="17"/>
         <image name="Dark" width="24" height="24"/>
         <image name="Home" width="25" height="25"/>
         <image name="Installed" width="14" height="14"/>

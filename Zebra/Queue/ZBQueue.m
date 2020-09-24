@@ -12,6 +12,7 @@
 
 #import <ZBAppDelegate.h>
 #import <ZBDevice.h>
+#import <Console/ZBConsoleViewController.h>
 #import <Downloads/ZBDownloadManager.h>
 #import <Tabs/Packages/Helpers/ZBPackage.h>
 
@@ -91,7 +92,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return statusMap;
 }
 
-- (NSArray <ZBCommand *> *)commands {
+- (NSArray <NSArray *> *)commands {
     NSMutableArray *commands = [NSMutableArray new];
     
     NSMutableArray *removeArguments = [NSMutableArray arrayWithObject:@"-r"];
@@ -103,7 +104,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         [removeCommand setCommand:@"/usr/bin/dpkg"];
         [removeCommand setArguments:removeArguments];
         [removeCommand setAsRoot:YES];
-        [commands addObject:removeCommand];
+        [commands addObject:@[@(ZBStageRemove), removeCommand]];
     }
     
     NSMutableArray *installArguments = [NSMutableArray arrayWithObject:@"-i"];
@@ -115,7 +116,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         [installCommand setCommand:@"/usr/bin/dpkg"];
         [installCommand setArguments:removeArguments];
         [installCommand setAsRoot:YES];
-        [commands addObject:installCommand];
+        [commands addObject:@[@(ZBStageInstall), installCommand]];
     }
     
     NSMutableArray *reinstallArguments = [NSMutableArray arrayWithObject:@"-i"];
@@ -127,7 +128,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         [reinstallCommand setCommand:@"/usr/bin/dpkg"];
         [reinstallCommand setArguments:reinstallArguments];
         [reinstallCommand setAsRoot:YES];
-        [commands addObject:reinstallCommand];
+        [commands addObject:@[@(ZBStageReinstall), reinstallCommand]];
     }
     
     NSMutableArray *upgradeArguments = [NSMutableArray arrayWithObject:@"-i"];
@@ -139,7 +140,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         [upgradeCommand setCommand:@"/usr/bin/dpkg"];
         [upgradeCommand setArguments:upgradeArguments];
         [upgradeCommand setAsRoot:YES];
-        [commands addObject:upgradeCommand];
+        [commands addObject:@[@(ZBStageUpgrade), upgradeCommand]];
     }
     
     NSMutableArray *downgradeArugments = [NSMutableArray arrayWithObject:@"-i"];
@@ -151,7 +152,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         [downgradeCommand setCommand:@"/usr/bin/dpkg"];
         [downgradeCommand setArguments:downgradeArugments];
         [downgradeCommand setAsRoot:YES];
-        [commands addObject:downgradeCommand];
+        [commands addObject:@[@(ZBStageDowngrade), downgradeCommand]];
     }
     
     return commands;

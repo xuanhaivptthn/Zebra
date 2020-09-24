@@ -11,11 +11,6 @@
 
 extern char **environ;
 
-@interface ZBCommand () {
-    id <ZBCommandDelegate> delegate;
-}
-@end
-
 @implementation ZBCommand
 
 + (NSString *)execute:(NSString *)command withArguments:(NSArray <NSString *> *_Nullable)arguments asRoot:(BOOL)root {
@@ -33,7 +28,7 @@ extern char **environ;
     self = [super init];
     
     if (self) {
-        if (delegate) self->delegate = delegate;
+        if (delegate) self.delegate = delegate;
     }
     
     return self;
@@ -117,7 +112,7 @@ extern char **environ;
         if (bytes > 0) {
             NSString *string = [[NSString alloc] initWithBytes:buffer length:bytes encoding:NSUTF8StringEncoding];
             if (string) {
-                if (self->delegate) [self->delegate receivedData:string];
+                if (self.delegate) [self.delegate receivedData:string];
                 if (self.output) [self.output appendString:string];
             }
         }
@@ -142,7 +137,7 @@ extern char **environ;
         if (bytes > 0) {
             NSString *string = [[NSString alloc] initWithBytes:buffer length:bytes encoding:NSUTF8StringEncoding];
             if (string) {
-                if (self->delegate) [self->delegate receivedErrorData:string];
+                if (self.delegate) [self.delegate receivedErrorData:string];
                 if (self.output) [self.output appendString:string];
             }
         }

@@ -433,7 +433,6 @@
 		89AD450B23CA5E350008831F /* AUPM@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AUPM@2x.png"; sourceTree = "<group>"; };
 		89AD450E23CA6D260008831F /* ZBSettings.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZBSettings.m; sourceTree = "<group>"; };
 		89B312822465D9640027FE29 /* ZBPackageViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = ZBPackageViewController.xib; sourceTree = "<group>"; };
-		89B76A51235F8FF6006900FE /* ZBStage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZBStage.h; sourceTree = "<group>"; };
 		89C112A12400E7A200854713 /* ro */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ro; path = ro.lproj/Localizable.strings; sourceTree = "<group>"; };
 		89C4244B24411C1100FE5ED8 /* UIAlertController+Zebra.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIAlertController+Zebra.h"; sourceTree = "<group>"; };
 		89C4244C24411C1100FE5ED8 /* UIAlertController+Zebra.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIAlertController+Zebra.m"; sourceTree = "<group>"; };
@@ -787,7 +786,6 @@
 				893C36542509AD8400DF07DE /* ZBCommand.h */,
 				893C36552509AD8400DF07DE /* ZBCommand.m */,
 				893C36572509AECB00DF07DE /* ZBCommandDelegate.h */,
-				89B76A51235F8FF6006900FE /* ZBStage.h */,
 				89FEA4132264BF68002647A2 /* ZBLogLevel.h */,
 				893952FD220B5D0100995109 /* ZBConsoleViewController.h */,
 				893952FE220B5D0100995109 /* ZBConsoleViewController.m */,

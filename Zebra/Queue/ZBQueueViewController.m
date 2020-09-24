@@ -13,6 +13,7 @@
 #import "ZBQueue.h"
 #import "ZBQueueTableViewCell.h"
 
+#import <Console/ZBConsoleViewController.h>
 #import <Tabs/ZBTabBarController.h>
 #import <Tabs/Packages/Helpers/ZBPackage.h>
 #import <Tabs/Packages/Views/ZBBoldTableViewHeaderView.h>
@@ -81,7 +82,8 @@
 }
 
 - (void)confirm {
-    
+    ZBConsoleViewController *console = [[ZBConsoleViewController alloc] init];
+    [self.navigationController pushViewController:console animated:YES];
 }
 
 #pragma mark - Popup Bar Management

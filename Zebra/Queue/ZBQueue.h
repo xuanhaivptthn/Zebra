@@ -49,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly) NSArray <NSArray <ZBPackage *> *> *packages;
 @property (readonly) ZBQueueViewController *controller;
 @property (readonly) NSDictionary *statusMap;
-@property (readonly) NSArray <ZBCommand *> *commands;
+@property (readonly) NSArray <NSArray *> *commands;
 + (instancetype)sharedQueue;
 - (void)add:(ZBPackage *)package to:(ZBQueueType)queue;
 - (void)remove:(ZBPackage *)package;

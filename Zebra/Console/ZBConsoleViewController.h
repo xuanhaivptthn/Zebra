@@ -6,8 +6,6 @@
 //  Copyright © 2019 Wilson Styres. All rights reserved.
 //
 
-#define COMMAND_START 1
-
 @import UIKit;
 
 #import <Downloads/ZBDownloadDelegate.h>
@@ -16,7 +14,16 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ZBConsoleViewController : UIViewController <ZBCommandDelegate, ZBDownloadDelegate, ZBDatabaseDelegate, UIGestureRecognizerDelegate>
+typedef enum {
+    ZBStageRemove,
+    ZBStageInstall,
+    ZBStageReinstall,
+    ZBStageUpgrade,
+    ZBStageDowngrade,
+    ZBStageFinished
+} ZBStage;
+
+@interface ZBConsoleViewController : UIViewController <ZBCommandDelegate, UIGestureRecognizerDelegate>
 @end
 
 NS_ASSUME_NONNULL_END
