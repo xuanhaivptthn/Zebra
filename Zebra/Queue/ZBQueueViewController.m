@@ -13,11 +13,12 @@
 #import "ZBQueue.h"
 #import "ZBQueueTableViewCell.h"
 
+#import <ZBAppDelegate.h>
+#import <ZBSettings.h>
 #import <Console/ZBConsoleViewController.h>
 #import <Tabs/ZBTabBarController.h>
 #import <Tabs/Packages/Helpers/ZBPackage.h>
 #import <Tabs/Packages/Views/ZBBoldTableViewHeaderView.h>
-#import <ZBAppDelegate.h>
 
 @import LNPopupController;
 
@@ -52,7 +53,7 @@
     [super viewDidLoad];
     
     UIBarButtonItem *dismissItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"Chevron Down"] style:UIBarButtonItemStylePlain target:self action:@selector(dismiss)];
-    UIBarButtonItem *clearItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Clear", @"") style:UIBarButtonItemStylePlain target:self action:@selector(clearQueue:)];
+    UIBarButtonItem *clearItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(clearQueue:)];
     self.navigationItem.leftBarButtonItems = @[dismissItem, clearItem];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Confirm", @"") style:UIBarButtonItemStyleDone target:self action:@selector(confirm)];
     
@@ -148,6 +149,22 @@
 
 - (NSString *)titleForHeaderInSection:(NSInteger)section {
     return [[ZBQueue sharedQueue] displayableNameForQueueType:section + 1];
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+    ZBPackage *package = packagesQueued[indexPath.section][indexPath.row];
+    
+    UIContextualAction *deleteAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive title:NSLocalizedString(@"Delete", @"") handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
+        NSError *error = NULL;
+        [[ZBQueue sharedQueue] remove:package from:indexPath.section + 1];
+        
+        completionHandler(error == NULL);
+    }];
+    if ([ZBSettings swipeActionStyle] == ZBSwipeActionStyleIcon) {
+        deleteAction.image = [UIImage imageNamed:@"delete_left"];
+    }
+
+    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
 }
 
 #pragma mark - Queue Delegate
