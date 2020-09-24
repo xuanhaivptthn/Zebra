@@ -225,6 +225,26 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return [[self queueForType:queue] containsObject:package];
 }
 
+- (void)clear {
+    
+}
+
+- (NSArray <ZBPackage *> *)packagesToRemove {
+    return [removeQueue arrayByAddingObjectsFromArray:conflictQueue];
+}
+
+- (NSArray <ZBPackage *> *)packagesToInstall {
+    NSMutableArray *packagesToInstall = [NSMutableArray new];
+    
+    [packagesToInstall addObjectsFromArray:installQueue];
+    [packagesToInstall addObjectsFromArray:reinstallQueue];
+    [packagesToInstall addObjectsFromArray:upgradeQueue];
+    [packagesToInstall addObjectsFromArray:downgradeQueue];
+    [packagesToInstall addObjectsFromArray:dependencyQueue];
+    
+    return packagesToInstall;
+}
+
 #pragma mark - Queue Delegate
 
 - (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {

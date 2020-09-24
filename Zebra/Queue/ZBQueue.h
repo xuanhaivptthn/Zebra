@@ -57,6 +57,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (ZBQueueType)locate:(ZBPackage *)package;
 - (BOOL)contains:(ZBPackage *)package inQueue:(ZBQueueType)queue;
 - (void)clear;
+- (NSArray <ZBPackage *> *)packagesToRemove;
+- (NSArray <ZBPackage *> *)packagesToInstall;
 - (NSString *)displayableNameForQueueType:(ZBQueueType)queue;
 + (UIColor *)colorForQueueType:(ZBQueueType)queue;
 @end

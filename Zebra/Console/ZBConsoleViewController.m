@@ -23,7 +23,6 @@
 
 @interface ZBConsoleViewController () {
     NSMutableArray *applicationBundlePaths;
-    NSMutableArray *installedPackageIdentifiers;
     ZBQueue *queue;
     ZBStage currentStage;
     BOOL respringRequired;
@@ -51,7 +50,6 @@
         
         currentStage = -1;
         applicationBundlePaths = [NSMutableArray new];
-        installedPackageIdentifiers = [NSMutableArray new];
         queue = [ZBQueue sharedQueue];
         respringRequired = NO;
         updateIconCache = NO;
@@ -107,7 +105,7 @@
 }
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-    return NO;
+    return currentStage == ZBStageFinished;
 }
 
 #pragma mark - Performing Tasks
@@ -116,6 +114,17 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
     });
+    
+    for (ZBPackage *package in queue.packagesToRemove) {
+        // Add all the removed package IDs to look for app bundles and substrate tweaks
+        NSString *bundlePath = [ZBPackage applicationBundlePathForIdentifier:package.identifier];
+        if (bundlePath) {
+            updateIconCache = YES;
+            [applicationBundlePaths addObject:bundlePath];
+        }
+        
+        if (!respringRequired) respringRequired = [ZBPackage respringRequiredFor:package.identifier];
+    }
     
     NSArray <NSArray *> *commands = queue.commands;
     if (commands.count == 0) {
@@ -128,86 +137,32 @@
         [self setStage:stage];
         
         ZBCommand *command = stageCommand[1];
-        switch (currentStage) {
-            case ZBStageRemove:
-                // Add all the removed package IDs to look for app bundles and substrate tweaks
-                for (int i = 1; i < command.arguments.count; i++) {
-                    NSString *packageID = command.arguments[i];
-                    NSString *bundlePath = [ZBPackage applicationBundlePathForIdentifier:packageID];
-                    if (bundlePath) {
-                        updateIconCache = YES;
-                        [applicationBundlePaths addObject:bundlePath];
-                    }
-                    
-                    if (!respringRequired) respringRequired = [ZBPackage respringRequiredFor:packageID];
-                }
-                break;
-            case ZBStageInstall:
-            case ZBStageReinstall:
-            case ZBStageUpgrade:
-            case ZBStageDowngrade:
-                for (int i = 1; i < command.arguments.count; i++) {
-                    [installedPackageIdentifiers addObject:command.arguments[i]];
-                }
-                break;
-            default:
-                break;
-        }
-        
         [command setDelegate:self];
         [command execute];
     }
     
-    for (NSString *packageID in installedPackageIdentifiers) {
-        NSString *bundlePath = [ZBPackage applicationBundlePathForIdentifier:packageID];
+    for (ZBPackage *package in queue.packagesToInstall) {
+        NSString *bundlePath = [ZBPackage applicationBundlePathForIdentifier:package.identifier];
         if (bundlePath && ![applicationBundlePaths containsObject:bundlePath]) {
             updateIconCache = YES;
             [applicationBundlePaths addObject:bundlePath];
         }
         
-        if (!respringRequired) {
-            respringRequired = [ZBPackage respringRequiredFor:packageID];
-        }
+        if (!respringRequired) respringRequired = [ZBPackage respringRequiredFor:package.identifier];
     }
     
-    [self removeAllDebs];
-    [self finishTasks];
-}
-
-- (void)finishTasks {
-    [applicationBundlePaths removeAllObjects];
-    
-    NSMutableArray *wishlist = [[ZBSettings wishlist] mutableCopy];
-    [wishlist removeObjectsInArray:installedPackageIdentifiers];
-    
-    [installedPackageIdentifiers removeAllObjects];
-    
     [self setStage:ZBStageFinished];
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
-    });
 }
 
 #pragma mark - Button Actions
 
 - (void)cancel {
-    [self removeAllDebs];
     [self setStage:ZBStageFinished];
 }
 
 - (void)close {
     [[ZBAppDelegate tabBarController] dismissPopupBarAnimated:YES completion:nil];
 }
-
-- (IBAction)cancelOrClose:(id)sender {
-    if (currentStage == ZBStageFinished) {
-        [self close];
-    } else {
-        [self cancel];
-    }
-}
-
 
 #pragma mark - Package Finishing Actions
 
@@ -262,10 +217,20 @@
             [self updateTitle:NSLocalizedString(@"Upgrading", @"")];
             [self writeToConsole:NSLocalizedString(@"Upgrading Packages...", @"") atLevel:ZBLogLevelInfo];
             break;
+        case ZBStageDowngrade:
+            [self updateTitle:NSLocalizedString(@"Downgrading", @"")];
+            [self writeToConsole:NSLocalizedString(@"Downgrading Packages...", @"") atLevel:ZBLogLevelInfo];
+            break;
         case ZBStageFinished:
             [self updateTitle:NSLocalizedString(@"Complete", @"")];
             [self writeToConsole:NSLocalizedString(@"Finished!", @"") atLevel:ZBLogLevelInfo];
             [self updateCompleteButton];
+            [self removeAllDebs];
+            [applicationBundlePaths removeAllObjects];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
+            });
             break;
         default:
             break;
@@ -392,7 +357,7 @@
     if ([data containsString:@"stable CLI interface"]) return;
     if ([data containsString:@"postinst"]) return;
 
-    [[FIRCrashlytics crashlytics] logWithFormat:@"DPKG/APT Error: %@", data];
+    [[FIRCrashlytics crashlytics] logWithFormat:@"DPKG Error: %@", data];
     if ([data rangeOfString:@"warning"].location != NSNotFound || [data hasPrefix:@"W:"]) {
         [self writeToConsole:data atLevel:ZBLogLevelWarning];
     } else {

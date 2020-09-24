@@ -858,8 +858,8 @@
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" ambiguous="YES" editable="NO" selectable="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lpS-Lu-3mG">
-                                <rect key="frame" x="20" y="44" width="374" height="718"/>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" editable="NO" selectable="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lpS-Lu-3mG">
+                                <rect key="frame" x="20" y="44" width="374" height="768"/>
                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <fontDescription key="fontDescription" name="Courier" family="Courier" pointSize="12"/>
@@ -885,9 +885,11 @@
                         </subviews>
                         <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
+                            <constraint firstItem="lpS-Lu-3mG" firstAttribute="top" secondItem="Usc-o9-c3X" secondAttribute="bottom" id="QgQ-4w-7X5"/>
                             <constraint firstItem="lpS-Lu-3mG" firstAttribute="top" secondItem="4S3-dv-b0f" secondAttribute="topMargin" id="RkW-VJ-x4b"/>
                             <constraint firstItem="Dwm-vr-TSr" firstAttribute="trailing" secondItem="4S3-dv-b0f" secondAttribute="trailingMargin" id="Y1U-P3-fTY"/>
                             <constraint firstItem="yRT-0e-41R" firstAttribute="top" secondItem="Dwm-vr-TSr" secondAttribute="bottom" id="Y96-Ry-qrP"/>
+                            <constraint firstItem="Dwm-vr-TSr" firstAttribute="top" secondItem="lpS-Lu-3mG" secondAttribute="bottom" id="Zar-gb-gCv"/>
                             <constraint firstItem="Dwm-vr-TSr" firstAttribute="leading" secondItem="4S3-dv-b0f" secondAttribute="leadingMargin" id="ahp-gf-aJ0"/>
                             <constraint firstItem="lpS-Lu-3mG" firstAttribute="leading" secondItem="4S3-dv-b0f" secondAttribute="leadingMargin" id="iVw-tZ-Pcw"/>
                             <constraint firstItem="lpS-Lu-3mG" firstAttribute="trailing" secondItem="4S3-dv-b0f" secondAttribute="trailingMargin" id="yzE-SA-aAG"/>
