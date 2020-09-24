@@ -232,6 +232,7 @@
         case ZBStageFinished:
             [self updateTitle:NSLocalizedString(@"Complete", @"")];
             [self writeToConsole:NSLocalizedString(@"Finished!", @"") atLevel:ZBLogLevelInfo];
+            [[ZBQueue sharedQueue] clear];
             [self updateCompleteButton];
             [self removeAllDebs];
             [applicationBundlePaths removeAllObjects];
