@@ -14,14 +14,14 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef enum {
+typedef NS_ENUM(NSUInteger, ZBStage) {
     ZBStageRemove,
     ZBStageInstall,
     ZBStageReinstall,
     ZBStageUpgrade,
     ZBStageDowngrade,
     ZBStageFinished
-} ZBStage;
+};
 
 @interface ZBConsoleViewController : UIViewController <ZBCommandDelegate, UIGestureRecognizerDelegate>
 @end

@@ -133,12 +133,20 @@
     }
     
     for (NSArray *stageCommand in commands) {
-        ZBStage stage = (ZBStage)stageCommand[0];
+        ZBStage stage = [stageCommand[0] unsignedIntegerValue];
         [self setStage:stage];
         
-        ZBCommand *command = stageCommand[1];
-        [command setDelegate:self];
-        [command execute];
+        if (![ZBDevice needsSimulation]) {
+            ZBCommand *command = stageCommand[1];
+            [command setDelegate:self];
+            [command execute];
+        } else {
+            [self writeToConsole:@"This device is simulated. The following packages would have been affected by this stage:" atLevel:ZBLogLevelWarning];
+            NSArray *arguments = ((ZBCommand *)stageCommand[1]).arguments;
+            for (int i = 2; i < arguments.count; i++) {
+                [self writeToConsole:[arguments[i] lastPathComponent] atLevel:ZBLogLevelDescript];
+            }
+        }
     }
     
     for (ZBPackage *package in queue.packagesToInstall) {
