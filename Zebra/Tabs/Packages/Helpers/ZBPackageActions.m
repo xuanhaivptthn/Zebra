@@ -392,7 +392,7 @@
             // If the user has pressed the bar button twice (i.e. the same package is already in the Queue, present it
             ZBPackageActionType action = actions[0].intValue;
             if ([[ZBQueue sharedQueue] contains:package inQueue:[self actionToQueue:action]]) {
-                [[ZBAppDelegate tabBarController] openQueue:YES];
+//                [[ZBAppDelegate tabBarController] openQueue:YES];
             }
             else {
                 [self performAction:action forPackage:package completion:^{

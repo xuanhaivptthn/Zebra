@@ -14,6 +14,7 @@
 #import <ZBDevice.h>
 #import <Console/ZBConsoleViewController.h>
 #import <Downloads/ZBDownloadManager.h>
+#import <Tabs/ZBTabBarController.h>
 #import <Tabs/Packages/Helpers/ZBPackage.h>
 
 @interface ZBQueue () {
@@ -26,13 +27,10 @@
     NSMutableArray *conflictQueue;
     NSMutableArray *packagesToDownload;
     
-    NSMutableDictionary *statusMap;
-    
+    NSMutableArray <id <ZBQueueDelegate>> *delegates;
     ZBDownloadManager *downloadManager;
 }
 @end
-
-NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 @implementation ZBQueue
 
@@ -60,8 +58,8 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
         conflictQueue = [NSMutableArray new];
         packagesToDownload = [NSMutableArray new];
         
-        downloadManager = [[ZBDownloadManager alloc] initWithDownloadDelegate:self];
         _controller = [[ZBQueueViewController alloc] init];
+        [self addDelegate:_controller];
     }
     
     return self;
@@ -83,13 +81,6 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     packages[ZBQueueTypeDowngrade - 1] = downgradeQueue;
     
     return packages;
-}
-
-- (NSDictionary *)statusMap {
-    if (statusMap) return statusMap;
-    
-    statusMap = [NSMutableDictionary new];
-    return statusMap;
 }
 
 - (NSArray <NSArray *> *)commands {
@@ -158,6 +149,20 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
     return commands;
 }
 
+#pragma mark - Delegate Management
+
+- (void)addDelegate:(id <ZBQueueDelegate>)delegate {
+    if (!delegates) delegates = [NSMutableArray new];
+    
+    [delegates addObject:delegate];
+}
+
+- (void)removeDelegate:(id <ZBQueueDelegate>)delegate {
+    if (!delegates) return;
+    
+    [delegates removeObject:delegate];
+}
+
 #pragma mark - Queue Management
 
 - (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue {
@@ -179,13 +184,12 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
             if (![array containsObject:package]) {
                 [array addObject:package];
             }
-            if (queue == ZBQueueTypeRemove || queue == ZBQueueTypeConflict) [self statusUpdate:ZBQueueStatusReady forPackage:package inQueue:queue];
         }
         default:
             break;
     }
     
-    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
+    [self bulkPackages:@[package] addedToQueue:queue];
 }
 
 - (void)removePackage:(ZBPackage *)package {
@@ -209,7 +213,7 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
             break;
     }
     
-    [[NSNotificationCenter defaultCenter] postNotificationName:ZBQueueUpdateNotification object:self];
+    [self bulkPackages:@[package] removedFromQueue:queue];
 }
 
 - (ZBQueueType)locate:(ZBPackage *)package {
@@ -255,27 +259,79 @@ NSString *const ZBQueueUpdateNotification = @"ZBQueueUpdate";
 
 #pragma mark - Queue Delegate
 
-- (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
-    [statusMap setObject:@(status) forKey:package.identifier];
-    [self.controller statusUpdate:status forPackage:package inQueue:queue];
+- (void)bulkPackages:(NSArray <ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue {
+    if (!queue) return;
+    
+    for (NSObject <ZBQueueDelegate> *delegate in delegates) {
+        [delegate packages:packages addedToQueue:queue];
+    }
+    
+    [[ZBAppDelegate tabBarController] presentPopupBar];
+}
+
+- (void)bulkPackages:(NSArray <ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
+    if (!queue) return;
+    
+    for (NSObject <ZBQueueDelegate> *delegate in delegates) {
+        [delegate packages:packages removedFromQueue:queue];
+    }
+    
+    [[ZBAppDelegate tabBarController] presentPopupBar];
+}
+
+- (void)bulkStartedDownloadForPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    if (!queue) return;
+    
+    for (NSObject <ZBQueueDelegate> *delegate in delegates) {
+        if ([delegate respondsToSelector:@selector(startedDownloadForPackage:inQueue:)]) {
+            [delegate startedDownloadForPackage:package inQueue:queue];
+        }
+    }
+}
+
+- (void)bulkDownloadProgressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
+    if (!queue) return;
+    
+    for (NSObject <ZBQueueDelegate> *delegate in delegates) {
+        if ([delegate respondsToSelector:@selector(downloadProgressUpdate:forPackage:inQueue:)]) {
+            [delegate downloadProgressUpdate:progress forPackage:package inQueue:queue];
+        }
+    }
+}
+
+- (void)bulkFinishedDownloadForPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue error:(NSError *)error {
+    if (!queue) return;
+    
+    for (NSObject <ZBQueueDelegate> *delegate in delegates) {
+        if ([delegate respondsToSelector:@selector(finishedDownloadForPackage:inQueue:error:)]) {
+            [delegate finishedDownloadForPackage:package inQueue:queue error:error];
+        }
+    }
 }
 
 #pragma mark - Download Delegate
 
-- (void)startedDownloads {}
+- (void)startedDownloads {
+    [self.controller lockConfirmButton];
+}
 
-- (void)finishedAllDownloads {}
+- (void)finishedAllDownloads {
+    [self.controller unlockConfirmButton];
+}
 
 - (void)startedPackageDownload:(ZBPackage *)package {
-    [self statusUpdate:ZBQueueStatusDownloading forPackage:package inQueue:[self locate:package]];
+    ZBQueueType queueType = [self locate:package];
+    [self bulkStartedDownloadForPackage:package inQueue:queueType];
 }
 
 - (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package {
-    [self.controller progressUpdate:progress forPackage:package inQueue:[self locate:package]];
+    ZBQueueType queueType = [self locate:package];
+    [self bulkDownloadProgressUpdate:progress forPackage:package inQueue:queueType];
 }
 
 - (void)finishedPackageDownload:(ZBPackage *)package withError:(NSError *_Nullable)error {
-    [self statusUpdate:ZBQueueStatusReady forPackage:package inQueue:[self locate:package]];
+    ZBQueueType queueType = [self locate:package];
+    [self bulkFinishedDownloadForPackage:package inQueue:queueType error:error];
     [packagesToDownload removeObject:package];
 }
 

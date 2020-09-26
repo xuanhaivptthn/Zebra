@@ -48,8 +48,6 @@
         
         sourceRefreshIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:12];
         sourceRefreshIndicator.color = [UIColor whiteColor];
-        
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(presentPopupBar) name:@"ZBQueueUpdate" object:nil];
     }
     
     return self;

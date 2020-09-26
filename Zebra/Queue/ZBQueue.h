@@ -17,7 +17,7 @@
 @class UIColor;
 
 typedef NS_ENUM(NSUInteger, ZBQueueType) {
-    ZBQueueTypeNone,
+    ZBQueueTypeNone = 0,
     ZBQueueTypeInstall,
     ZBQueueTypeRemove,
     ZBQueueTypeReinstall,
@@ -27,23 +27,16 @@ typedef NS_ENUM(NSUInteger, ZBQueueType) {
     ZBQueueTypeDependency
 };
 
-typedef NS_ENUM(NSUInteger, ZBQueueStatus) {
-    ZBQueueStatusPreparing,
-    ZBQueueStatusDependencies,
-    ZBQueueStatusAuthorizing,
-    ZBQueueStatusDownloading,
-    ZBQueueStatusReady
-};
-
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol ZBQueueDelegate
 - (void)packages:(NSArray <ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue;
 - (void)packages:(NSArray <ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue;
-- (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
-- (void)startedDownloadForPackage:(ZBPackage *)package;
-- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
-- (void)finishedDownloadForPackage:(ZBPackage *)package error:(NSError *)error;
+
+@optional
+- (void)startedDownloadForPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (void)downloadProgressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue;
+- (void)finishedDownloadForPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue error:(NSError *)error;
 @end
 
 @interface ZBQueue : NSObject <ZBDownloadDelegate>
@@ -53,6 +46,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly) NSDictionary *statusMap;
 @property (readonly) NSArray <NSArray *> *commands;
 + (instancetype)sharedQueue;
+- (void)addDelegate:(id <ZBQueueDelegate>)delegate;
+- (void)removeDelegate:(id <ZBQueueDelegate>)delegate;
 - (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue;
 - (void)removePackage:(ZBPackage *)package;
 - (void)removePackage:(ZBPackage *)package fromQueue:(ZBQueueType)queue;

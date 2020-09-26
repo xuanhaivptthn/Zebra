@@ -17,7 +17,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (strong, nonatomic) IBOutlet UILabel *statusLabel;
 @property (strong, nonatomic) IBOutlet UIProgressView *progressView;
 - (void)setProgress:(CGFloat)progress;
-- (void)setStatus:(ZBQueueStatus)status queueType:(ZBQueueType)queue;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -36,8 +36,6 @@
     
     if (self) {
         self.title = NSLocalizedString(@"Queue", @"");
-        
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateQueue) name:@"ZBQueueUpdate" object:nil];
     }
     
     return self;
@@ -51,7 +49,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
+
     UIBarButtonItem *dismissItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"Chevron Down"] style:UIBarButtonItemStylePlain target:self action:@selector(dismiss)];
     UIBarButtonItem *clearItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(clearQueue:)];
     self.navigationItem.leftBarButtonItems = @[dismissItem, clearItem];
@@ -61,6 +59,8 @@
     [self.tableView setTableFooterView:[UIView new]];
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBQueueTableViewCell" bundle:nil] forCellReuseIdentifier:@"queueTableViewCell"];
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBBoldTableViewHeaderView" bundle:nil] forHeaderFooterViewReuseIdentifier:@"BoldTableViewHeaderView"];
+    
+    [self updateQueue];
 }
 
 - (void)dismiss {
@@ -127,9 +127,6 @@
     
     cell.packageNameLabel.text = package.name;
     
-    ZBQueueStatus status = [[[[ZBQueue sharedQueue] statusMap] objectForKey:package.identifier] unsignedIntegerValue];
-    [cell setStatus:status queueType:indexPath.section + 1];
-    
     [package setIconImageForImageView:cell.iconView];
     return cell;
 }
@@ -170,43 +167,59 @@
 #pragma mark - Queue Delegate
 
 - (void)packages:(NSArray<ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue {
-    if (queue == ZBQueueTypeNone) return;
-    
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
     });
+    
+    [self updateQueue];
 }
 
 - (void)packages:(NSArray<ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
-    if (queue == ZBQueueTypeNone) return;
-    
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
     });
+    
+    [self updateQueue];
 }
 
-- (void)statusUpdate:(ZBQueueStatus)status forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
-    if (queue == ZBQueueTypeNone) return;
-    
+- (void)startedDownloadForPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
     NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
     if (row != NSNotFound) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
         dispatch_async(dispatch_get_main_queue(), ^{
             ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-            [cell setStatus:status queueType:indexPath.section + 1];
+            cell.progressView.progress = 0.0;
         });
     }
 }
 
-- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {
-    if (queue == ZBQueueTypeNone) return;
-    
+- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {    
     NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
     if (row != NSNotFound) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
         dispatch_async(dispatch_get_main_queue(), ^{
             ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
             [cell setProgress:progress];
+        });
+    }
+}
+
+- (void)finishedDownloadForPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue error:(NSError *)error {
+    NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
+    if (row != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+            cell.progressView.progress = 1.0;
+            
+            if (error) {
+                cell.tintColor = [UIColor systemPinkColor];
+                cell.statusLabel.textColor = [UIColor systemPinkColor];
+                cell.statusLabel.text = error.localizedDescription;
+            } else {
+                NSString *status = [NSString stringWithFormat:@"Ready to %@", [[ZBQueue sharedQueue] displayableNameForQueueType:queue].lowercaseString];
+                cell.statusLabel.text = NSLocalizedString(status, @"");
+            }
         });
     }
 }

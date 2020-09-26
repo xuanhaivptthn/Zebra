@@ -17,7 +17,6 @@
     self.iconView.layer.cornerRadius = 10;
     self.iconView.clipsToBounds = YES;
     [self.iconView applyBorder];
-    [self setStatus:ZBQueueStatusPreparing queueType:ZBQueueTypeInstall];
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
@@ -27,7 +26,10 @@
 }
 
 - (void)setProgress:(CGFloat)progress {
-    if (self.progressView.hidden) self.progressView.hidden = NO;
+    if (self.progressView.hidden) {
+        self.progressView.hidden = NO;
+        self.progressView.alpha = 1.0;
+    }
     
     [self.progressView setProgress:progress animated:YES];
     
@@ -35,31 +37,6 @@
         [UIView animateWithDuration:0.3 animations:^{
             self.progressView.alpha = 0.0;
         }];
-    }
-}
-
-- (void)setStatus:(ZBQueueStatus)status queueType:(ZBQueueType)queue {
-    switch (status) {
-        case ZBQueueStatusPreparing:
-            self.statusLabel.text = NSLocalizedString(@"Preparing...", @"");
-            break;
-        case ZBQueueStatusDependencies:
-            self.statusLabel.text = NSLocalizedString(@"Calculating Dependencies...", @"");
-            break;
-        case ZBQueueStatusAuthorizing:
-            self.statusLabel.text = NSLocalizedString(@"Authorizing Download...", @"");
-            break;
-        case ZBQueueStatusDownloading:
-            self.statusLabel.text = NSLocalizedString(@"Downloading...", @"");
-            self.progressView.alpha = 1.0;
-            self.progressView.progress = 0.0;
-            self.progressView.hidden = NO;
-            break;
-        case ZBQueueStatusReady: {
-            NSString *status = [NSString stringWithFormat:@"Ready to %@", [[ZBQueue sharedQueue] displayableNameForQueueType:queue].lowercaseString];
-            self.statusLabel.text = NSLocalizedString(status, @"");
-            break;
-        }
     }
 }
 

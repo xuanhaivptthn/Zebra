@@ -50,6 +50,10 @@ NSString *const ZBUserDidTakeScreenshotNotification = @"DidTakeScreenshotNotific
 NSString *const ZBUserStartedScreenCaptureNotification = @"StartedScreenCaptureNotification";
 NSString *const ZBUserEndedScreenCaptureNotification = @"EndedScreenCaptureNotification";
 
++ (ZBAppDelegate *)sharedDelegate {
+    return (ZBAppDelegate *)[[UIApplication sharedApplication] delegate];
+}
+
 + (NSString *)bundleID {
     return [[NSBundle mainBundle] bundleIdentifier];
 }
@@ -141,12 +145,12 @@ NSString *const ZBUserEndedScreenCaptureNotification = @"EndedScreenCaptureNotif
 
 + (ZBTabBarController *)tabBarController {
     if ([NSThread isMainThread]) {
-        return (ZBTabBarController *)((ZBAppDelegate *)[[UIApplication sharedApplication] delegate]).window.rootViewController;
+        return (ZBTabBarController *)[self sharedDelegate].window.rootViewController;
     }
     else {
         __block ZBTabBarController *tabController;
         dispatch_sync(dispatch_get_main_queue(), ^{
-            tabController = (ZBTabBarController *)((ZBAppDelegate *)[[UIApplication sharedApplication] delegate]).window.rootViewController;
+            tabController = (ZBTabBarController *)[self sharedDelegate].window.rootViewController;
         });
         return tabController;
     }

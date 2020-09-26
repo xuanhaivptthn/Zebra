@@ -12,7 +12,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface ZBQueueViewController : UITableViewController <ZBQueueDelegate>
-
+- (void)lockConfirmButton;
+- (void)unlockConfirmButton;
 @end
 
 NS_ASSUME_NONNULL_END
