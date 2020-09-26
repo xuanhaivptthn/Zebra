@@ -87,6 +87,16 @@
     [self.navigationController pushViewController:console animated:YES];
 }
 
+#pragma mark - Bar Buttons
+
+- (void)lockConfirmButton {
+    
+}
+
+- (void)unlockConfirmButton {
+    
+}
+
 #pragma mark - Popup Bar Management
 
 - (void)updateQueue {
@@ -167,18 +177,10 @@
 #pragma mark - Queue Delegate
 
 - (void)packages:(NSArray<ZBPackage *> *)packages addedToQueue:(ZBQueueType)queue {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
-    });
-    
     [self updateQueue];
 }
 
 - (void)packages:(NSArray<ZBPackage *> *)packages removedFromQueue:(ZBQueueType)queue {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:queue - 1] withRowAnimation:UITableViewRowAnimationAutomatic];
-    });
-    
     [self updateQueue];
 }
 
@@ -188,12 +190,13 @@
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
         dispatch_async(dispatch_get_main_queue(), ^{
             ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-            cell.progressView.progress = 0.0;
+            [cell setProgress:0.0];
+            cell.statusLabel.text = NSLocalizedString(@"Downloading", @"");
         });
     }
 }
 
-- (void)progressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {    
+- (void)downloadProgressUpdate:(CGFloat)progress forPackage:(ZBPackage *)package inQueue:(ZBQueueType)queue {    
     NSUInteger row = [packagesQueued[queue - 1] indexOfObject:package];
     if (row != NSNotFound) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
@@ -210,12 +213,13 @@
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:queue - 1];
         dispatch_async(dispatch_get_main_queue(), ^{
             ZBQueueTableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-            cell.progressView.progress = 1.0;
+            [cell setProgress:1.0];
             
             if (error) {
                 cell.tintColor = [UIColor systemPinkColor];
                 cell.statusLabel.textColor = [UIColor systemPinkColor];
                 cell.statusLabel.text = error.localizedDescription;
+                cell.accessoryType = UITableViewCellAccessoryDetailButton;
             } else {
                 NSString *status = [NSString stringWithFormat:@"Ready to %@", [[ZBQueue sharedQueue] displayableNameForQueueType:queue].lowercaseString];
                 cell.statusLabel.text = NSLocalizedString(status, @"");

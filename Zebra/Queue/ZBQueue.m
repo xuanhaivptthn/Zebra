@@ -60,6 +60,8 @@
         
         _controller = [[ZBQueueViewController alloc] init];
         [self addDelegate:_controller];
+        
+        downloadManager = [[ZBDownloadManager alloc] initWithDownloadDelegate:self];
     }
     
     return self;
@@ -168,25 +170,16 @@
 - (void)addPackage:(ZBPackage *)package toQueue:(ZBQueueType)queue {
     if (queue == ZBQueueTypeNone) return;
     
-    switch(queue) {
-        case ZBQueueTypeInstall:
-        case ZBQueueTypeReinstall:
-        case ZBQueueTypeUpgrade:
-        case ZBQueueTypeDowngrade:
-        case ZBQueueTypeDependency:
-            if (![package debPath]) { // Packages that are already downloaded will have debPath set
-                [packagesToDownload addObject:package];
-                if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [self->downloadManager downloadPackages:@[package]];
-            }
-        case ZBQueueTypeRemove:
-        case ZBQueueTypeConflict: {
-            NSMutableArray *array = [self queueForType:queue];
-            if (![array containsObject:package]) {
-                [array addObject:package];
-            }
+    NSMutableArray *array = [self queueForType:queue];
+    if (![array containsObject:package]) {
+        [array addObject:package];
+    }
+    
+    if (queue == ZBQueueTypeInstall || queue == ZBQueueTypeReinstall || queue == ZBQueueTypeUpgrade || queue == ZBQueueTypeDowngrade || queue == ZBQueueTypeDependency) {
+        if (![package debPath]) { // Packages that are already downloaded will have debPath set
+            [packagesToDownload addObject:package];
+            if ([ZBDevice connectionType] == ZBConnectionTypeWiFi) [self->downloadManager downloadPackages:@[package]];
         }
-        default:
-            break;
     }
     
     [self bulkPackages:@[package] addedToQueue:queue];

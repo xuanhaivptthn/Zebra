@@ -16,6 +16,7 @@
     
     self.iconView.layer.cornerRadius = 10;
     self.iconView.clipsToBounds = YES;
+    self.statusLabel.text = NSLocalizedString(@"Preparing...", @"");
     [self.iconView applyBorder];
 }
 
@@ -44,6 +45,8 @@
     [super prepareForReuse];
     
     self.iconView.image = [UIImage imageNamed:@"Unknown"];
+    self.statusLabel.text = NSLocalizedString(@"Preparing...", @"");
+    self.packageNameLabel.text = @"Package";
 }
 
 @end
