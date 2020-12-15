@@ -7,13 +7,12 @@
 //
 
 @import UIKit;
-#import <Extensions/ZBRefreshableTableViewController.h>
 #import "ZBNewsCollectionViewCell.h"
 @import SafariServices;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ZBChangesTableViewController : ZBRefreshableTableViewController <UICollectionViewDelegate, UICollectionViewDataSource, SFSafariViewControllerDelegate>
+@interface ZBChangesTableViewController : UITableViewController <UICollectionViewDelegate, UICollectionViewDataSource, SFSafariViewControllerDelegate>
 @property (nonatomic, assign) BOOL batchLoad;
 @property (nonatomic, assign) BOOL isPerformingBatchLoad;
 @property (nonatomic, assign) BOOL continueBatchLoad;
