@@ -14,7 +14,7 @@
 
 #import "ZBTab.h"
 #import <Managers/ZBSourceManager.h>
-#import "Sources/Controllers/ZBSourceListViewController.h"
+#import <UI/Sources/ZBSourceListViewController.h>
 //#import "Packages/Helpers/ZBPackage.h"
 #import <ZBAppDelegate.h>
 #import <Headers/UITabBarItem.h>

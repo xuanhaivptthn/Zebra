@@ -49,9 +49,8 @@
         searchController.searchResultsUpdater = self;
         searchController.delegate = self;
         searchController.searchBar.autocapitalizationType = UITextAutocapitalizationTypeNone;
-//        // A secret tool that will help us later
-//        searchController.searchBar.showsBookmarkButton = YES;
-//        [searchController.searchBar setImage:[UIImage systemImageNamed:@"line.horizontal.3.decrease.circle"] forSearchBarIcon:UISearchBarIconBookmark state:UIControlStateNormal];
+        searchController.searchBar.showsBookmarkButton = YES;
+        [searchController.searchBar setImage:[UIImage systemImageNamed:@"line.horizontal.3.decrease.circle"] forSearchBarIcon:UISearchBarIconBookmark state:UIControlStateNormal];
         
         sources = [sourceManager.sources mutableCopy];
         filteredSources = [sources copy];

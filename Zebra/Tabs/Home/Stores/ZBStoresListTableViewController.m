@@ -16,7 +16,7 @@
 #import <Tabs/Sources/Views/ZBSourceTableViewCell.h>
 //#import <Database/ZBDatabaseManager.h>
 //#import <Tabs/Sources/Helpers/ZBSourceManager.h>
-#import <Tabs/Sources/Controllers/ZBSourceAccountTableViewController.h>
+#import <UI/Sources/ZBSourceAccountTableViewController.h>
 
 @import SDWebImage;
 

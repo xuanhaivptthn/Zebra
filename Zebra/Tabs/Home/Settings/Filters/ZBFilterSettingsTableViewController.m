@@ -19,7 +19,7 @@
 #import <Tabs/Sources/Views/ZBSourceTableViewCell.h>
 #import <Model/ZBSource.h>
 #import <Tabs/Sources/Controllers/ZBSourceSelectTableViewController.h>
-#import <Tabs/Sources/Controllers/ZBSourceSectionsListTableViewController.h>
+#import <UI/Sources/ZBSourceSectionsListTableViewController.h>
 
 #import <Extensions/UIColor+GlobalColors.h>
 #import <Extensions/UIImageView+Zebra.h>

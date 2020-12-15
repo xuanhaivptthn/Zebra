@@ -861,6 +861,7 @@
 				89114C68254C9660003A7362 /* Migration */,
 				89114C67254C95B5003A7362 /* Packages */,
 				8983790425507D760066DCA7 /* Search */,
+				89D76ACC258972E400C20084 /* Sources */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -1001,18 +1002,10 @@
 		896F11C821B231CF0017B581 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
-				8944916D21B5AF5E00DDDEF2 /* ZBSourceListViewController.h */,
-				8944916E21B5AF5E00DDDEF2 /* ZBSourceListViewController.m */,
 				8927D51F23C29CCA00A7987E /* ZBSourceImportTableViewController.h */,
 				8927D52023C29CCA00A7987E /* ZBSourceImportTableViewController.m */,
-				363FE24D2287A1DD00B69929 /* ZBSourceAccountTableViewController.h */,
-				363FE24E2287A1DD00B69929 /* ZBSourceAccountTableViewController.m */,
-				898E010C22480F8900BEA8E9 /* ZBSourceSectionsListTableViewController.h */,
-				898E010D22480F8900BEA8E9 /* ZBSourceSectionsListTableViewController.m */,
 				899BDCBA241DBB6300A2CC3A /* ZBSourceSelectTableViewController.h */,
 				899BDCBB241DBB6300A2CC3A /* ZBSourceSelectTableViewController.m */,
-				89374958248603D700CE0520 /* ZBSourceAddViewController.h */,
-				89374959248603D700CE0520 /* ZBSourceAddViewController.m */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
@@ -1149,6 +1142,21 @@
 				89CADA142263FEF3000101EE /* ZBDownloadManager.m */,
 			);
 			path = Downloads;
+			sourceTree = "<group>";
+		};
+		89D76ACC258972E400C20084 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				8944916D21B5AF5E00DDDEF2 /* ZBSourceListViewController.h */,
+				8944916E21B5AF5E00DDDEF2 /* ZBSourceListViewController.m */,
+				363FE24D2287A1DD00B69929 /* ZBSourceAccountTableViewController.h */,
+				363FE24E2287A1DD00B69929 /* ZBSourceAccountTableViewController.m */,
+				898E010C22480F8900BEA8E9 /* ZBSourceSectionsListTableViewController.h */,
+				898E010D22480F8900BEA8E9 /* ZBSourceSectionsListTableViewController.m */,
+				89374958248603D700CE0520 /* ZBSourceAddViewController.h */,
+				89374959248603D700CE0520 /* ZBSourceAddViewController.m */,
+			);
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		89DD2683220156F800CD31A0 /* Queue */ = {
