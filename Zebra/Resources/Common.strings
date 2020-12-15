@@ -1,0 +1,21 @@
+/* 
+  Common.strings
+  Zebra
+
+  Created by Wilson Styres on 12/14/20.
+  Copyright © 2020 Wilson Styres. All rights reserved.
+*/
+
+// Common
+
+"YES" = "Yes";
+"NO" = "No";
+"CANCEL" = "Cancel";
+"OK" = "Ok";
+"RETRY" = "Retry";
+"EDIT" = "Edit";
+"CLOSE" = "Close";
+"DONE" = "Done";
+"CLEAR" = "Clear";
+"ERROR_OCCURRED" = "An Error Occurred";
+"DISMISS" = "Dismiss";

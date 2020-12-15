@@ -1,0 +1,31 @@
+/* 
+  Home.strings
+  Zebra
+
+  Created by Wilson Styres on 12/14/20.
+  Copyright © 2020 Wilson Styres. All rights reserved.
+*/
+
+// Home
+
+"HOME" = "Home";
+"INFO_HEADER" = "Info";
+"WELCOME_TEXT" = "Welcome to Zebra!";
+"REPORT_BUG_LINK" = "Report a Bug";
+"CHANGELOG_LINK" = "Changelog";
+"COMMUNITY_HEADER" = "Community";
+"DISCORD_INVITE_LINK" = "Join our Discord";
+"TWITTER_FOLLOW_LINK" = "Follow us on Twitter";
+"CROWDIN_LINK" = "Help translate Zebra!"
+
+// Settings
+
+"SETTINGS_HEADER" = "Settings";
+
+// Credits
+
+"CREDITS_HEADER" = "Credits";
+"CREATORS_HEADER" = "Creators";
+"CONTRIBUTORS_HEADER" = "Contributors";
+"TRANSLATORS_HEADER" = "Translators";
+"LIBRARIES_HEADER" = "Libraries";
