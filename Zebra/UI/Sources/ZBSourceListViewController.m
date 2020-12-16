@@ -9,6 +9,7 @@
 #import "ZBSourceListViewController.h"
 #import "ZBSourceAddViewController.h"
 #import "ZBSourceSectionsListTableViewController.h"
+#import "ZBSourceFilterViewController.h"
 
 #import <ZBAppDelegate.h>
 #import <ZBDevice.h>
@@ -17,8 +18,10 @@
 #import <Extensions/UIColor+GlobalColors.h>
 #import <Extensions/UIAlertController+Zebra.h>
 #import <Model/ZBSource.h>
+#import <Model/ZBSourceFilter.h>
 #import <Managers/ZBSourceManager.h>
 #import <Tabs/Sources/Views/ZBSourceTableViewCell.h>
+#import <UI/Common/ZBPartialPresentationController.h>
 
 @interface ZBSourceListViewController () {
     UISearchController *searchController;
@@ -26,7 +29,9 @@
     UIBarButtonItem *addButton;
     BOOL hasProblems;
     NSUInteger withProblems;
+    ZBSourceManager *sourceManager;
 }
+@property (nonnull) ZBSourceFilter *filter;
 @end
 
 @implementation ZBSourceListViewController
@@ -34,26 +39,27 @@
 #pragma mark - Initializers
 
 - (id)init {
-    if (@available(iOS 13.0, *)) {
-        self = [super initWithStyle:UITableViewStyleInsetGrouped];
-    } else {
-        self = [super initWithStyle:UITableViewStyleGrouped];
-    }
+    self = [super initWithStyle:UITableViewStylePlain];
     
     if (self) {
         self.title = NSLocalizedString(@"Sources", @"");
-        self.tableView.allowsMultipleSelectionDuringEditing = YES;
         
         searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
         searchController.obscuresBackgroundDuringPresentation = NO;
         searchController.searchResultsUpdater = self;
         searchController.delegate = self;
+        searchController.searchBar.delegate = self;
         searchController.searchBar.autocapitalizationType = UITextAutocapitalizationTypeNone;
         searchController.searchBar.showsBookmarkButton = YES;
         [searchController.searchBar setImage:[UIImage systemImageNamed:@"line.horizontal.3.decrease.circle"] forSearchBarIcon:UISearchBarIconBookmark state:UIControlStateNormal];
         
-        sources = [sourceManager.sources mutableCopy];
-        filteredSources = [sources copy];
+        self.navigationItem.searchController = searchController;
+        
+        sourceManager = ZBSourceManager.sharedInstance;
+        [sourceManager addDelegate:self];
+        
+
+        filteredSources = sources.copy;
         hasProblems = NO;
         withProblems = 0;
     }
@@ -76,28 +82,17 @@
 }
 
 - (void)layoutNavigationButtonsRefreshing {
-    [super layoutNavigationButtonsRefreshing];
-    
     dispatch_async(dispatch_get_main_queue(), ^{
         self.navigationItem.rightBarButtonItem = nil;
     });
 }
 
 - (void)layoutNavigationButtonsNormal {
-    [super layoutNavigationButtonsNormal];
-    
     dispatch_async(dispatch_get_main_queue(), ^{
         self.navigationItem.leftBarButtonItem = self.editButtonItem;
         self->addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(presentAddView)];
         self.navigationItem.rightBarButtonItem = self->addButton;
     });
-}
-
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-    
-    self.navigationItem.searchController = searchController;
-    self.navigationItem.hidesSearchBarWhenScrolling = YES;
 }
 
 - (void)presentAddView {
@@ -543,7 +538,7 @@
 }
 
 - (void)finishedSourceRefresh {
-    [super finishedSourceRefresh];
+//    [super finishedSourceRefresh];
 
     dispatch_async(dispatch_get_main_queue(), ^{
         NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
@@ -602,6 +597,24 @@
 
 - (void)scrollToTop {
     [self.tableView scrollRectToVisible:CGRectMake(0, 0, 1, 1) animated:YES];
+}
+
+#pragma mark - Search Bar Delegate
+
+- (void)searchBarBookmarkButtonClicked:(UISearchBar *)searchBar {
+    ZBSourceFilterViewController *filter = [[ZBSourceFilterViewController alloc] initWithFilter:self.filter delegate:self];
+    
+    UINavigationController *filterVC = [[UINavigationController alloc] initWithRootViewController:filter];
+    filterVC.modalPresentationStyle = UIModalPresentationCustom;
+    filterVC.transitioningDelegate = self;
+    
+    [self presentViewController:filterVC animated:YES completion:nil];
+}
+
+#pragma mark - Presentation Controller
+
+- (UIPresentationController *)presentationControllerForPresentedViewController:(UIViewController *)presented presentingViewController:(UIViewController *)presenting sourceViewController:(UIViewController *)source {
+    return [[ZBPartialPresentationController alloc] initWithPresentedViewController:presented presentingViewController:presenting scale:0.52];
 }
 
 @end

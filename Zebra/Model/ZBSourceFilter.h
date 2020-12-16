@@ -22,6 +22,10 @@ typedef NS_ENUM(NSUInteger, ZBSourceSortOrder) {
 @property (nonatomic, nullable) NSString *searchTerm;
 @property (nonatomic) BOOL stores;
 @property (nonatomic) ZBSourceSortOrder sortOrder;
+- (instancetype)init;
+- (NSCompoundPredicate *)compoundPredicate;
+- (NSArray <NSSortDescriptor *> *)sortDescriptors;
+- (BOOL)isActive;
 @end
 
 NS_ASSUME_NONNULL_END

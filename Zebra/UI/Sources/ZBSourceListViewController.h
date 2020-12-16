@@ -8,13 +8,14 @@
 
 @import UIKit;
 
+#import <UI/Common/Delegates/ZBFilterDelegate.h>
 #import <Managers/Delegates/ZBSourceDelegate.h>
 
 @class ZBSource;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ZBSourceListViewController : UITableViewController <ZBSourceDelegate, UISearchResultsUpdating, UISearchControllerDelegate> {
+@interface ZBSourceListViewController : UITableViewController <ZBSourceDelegate, UISearchControllerDelegate, UISearchResultsUpdating, UISearchControllerDelegate, ZBFilterDelegate> {
     NSMutableArray <ZBSource *> *sources;
     NSArray <ZBSource *> *filteredSources;
 }
