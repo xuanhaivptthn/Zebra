@@ -8,10 +8,10 @@
 
 @class ZBSource;
 @class ZBBaseSource;
+@class ZBSourceFilter;
 
 #import <Tabs/Sources/Helpers/ZBSourceVerificationDelegate.h>
 #import <Managers/Delegates/ZBSourceDelegate.h>
-//#import <Database/ZBDatabaseDelegate.h>
 #import <Downloads/ZBDownloadDelegate.h>
 
 @import Foundation;
@@ -88,6 +88,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSDictionary <NSString *, NSNumber *> *)sectionsForSource:(ZBSource *)source;
 - (NSUInteger)numberOfPackagesInSource:(ZBSource *)source;
+
+- (NSArray <ZBBaseSource *> *)filterSources:(NSArray <ZBBaseSource *> *)sources withFilter:(ZBSourceFilter *)filter;
 @end
 
 NS_ASSUME_NONNULL_END

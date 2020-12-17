@@ -10,6 +10,7 @@
 
 #import <Helpers/utils.h>
 #import <Model/ZBSource.h>
+#import <Model/ZBSourceFilter.h>
 #import <Managers/ZBDatabaseManager.h>
 #import <Managers/ZBPackageManager.h>
 #import <Downloads/ZBDownloadManager.h>
@@ -731,6 +732,13 @@
 
 - (NSUInteger)numberOfPackagesInSource:(ZBSource *)source {
     return [databaseManager numberOfPackagesInSource:source];
+}
+
+- (NSArray <ZBBaseSource *> *)filterSources:(NSArray <ZBBaseSource *> *)sources withFilter:(ZBSourceFilter *)filter {
+    if (!filter) return sources;
+    
+    NSArray *filteredSources = [sources filteredArrayUsingPredicate:filter.compoundPredicate];
+    return [filteredSources sortedArrayUsingDescriptors:filter.sortDescriptors];
 }
 
 @end
