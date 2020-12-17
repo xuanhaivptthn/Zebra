@@ -413,6 +413,23 @@ NSString *const AllowsCrashReportingKey = @"AllowsCrashReporting";
     [defaults setObject:filters forKey:@"PackageFilters"];
 }
 
++ (ZBSourceFilter *)sourceFilter {
+    NSData *filterData = [[NSUserDefaults standardUserDefaults] dataForKey:@"SourceFilter"];
+    if (filterData.length) {
+        ZBSourceFilter *filter = [NSKeyedUnarchiver unarchiveObjectWithData:filterData];
+        return filter;
+    }
+    
+    return NULL;
+}
+
++ (void)setSourceFilter:(ZBSourceFilter *)filter {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+    NSData *encodedFilter = [NSKeyedArchiver archivedDataWithRootObject:filter];
+    [defaults setObject:encodedFilter forKey:@"SourceFilter"];
+}
+
 #pragma mark - Homepage Settings
 
 + (BOOL)wantsFeaturedPackages {

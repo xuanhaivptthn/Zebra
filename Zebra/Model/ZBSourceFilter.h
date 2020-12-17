@@ -18,7 +18,6 @@ typedef NS_ENUM(NSUInteger, ZBSourceSortOrder) {
 };
 
 @interface ZBSourceFilter : NSObject
-@property (nonatomic) ZBSource *source;
 @property (nonatomic, nullable) NSString *searchTerm;
 @property (nonatomic) BOOL stores;
 @property (nonatomic) ZBSourceSortOrder sortOrder;
