@@ -71,11 +71,8 @@
     
     [self.tableView setTableHeaderView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 1)]];
     [self.tableView setTableFooterView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 1)]];
-}
-
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
     
+    [self layoutNavigationButtonsNormal];
     [self loadSources];
 }
 
@@ -113,7 +110,16 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         self.navigationItem.leftBarButtonItem = self.editButtonItem;
         self->addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(presentAddView)];
-        self.navigationItem.rightBarButtonItem = self->addButton;
+        self.navigationItem.rightBarButtonItems = @[self->addButton];
+    });
+}
+
+- (void)layoutNavigationButtonsEditing {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIBarButtonItem *deleteButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(removeSources)];
+        deleteButton.enabled = NO;
+        UIBarButtonItem *shareButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(exportSources)];
+        self.navigationItem.rightBarButtonItems = @[shareButton, deleteButton];
     });
 }
 
@@ -206,16 +212,9 @@
     [super setEditing:editing animated:animated];
     
     if (editing) {
-        if (!selectedSources) selectedSources = [NSMutableArray new];
-        
-        UIBarButtonItem *deleteButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(removeSources)];
-        deleteButton.enabled = NO;
-        UIBarButtonItem *shareButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(exportSources)];
-        self.navigationItem.rightBarButtonItems = @[shareButton, deleteButton];
-    }
-    else {
-        self.navigationItem.rightBarButtonItems = @[addButton];
-        [selectedSources removeAllObjects];
+        [self layoutNavigationButtonsEditing];
+    } else {
+        [self layoutNavigationButtonsNormal];
     }
 }
 
@@ -307,10 +306,10 @@
         }
     }
     else {
-        ZBBaseSource *source = [indexPath.row];
+        ZBBaseSource *source = filterResults[indexPath.row];
         
         BOOL busy = [sourceManager isSourceBusy:source];
-        cell.selectionStyle = UITableViewCefilterResultsllSelectionStyleDefault;
+        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
         [(ZBSourceTableViewCell *)cell setSpinning:busy];
     }
 }
