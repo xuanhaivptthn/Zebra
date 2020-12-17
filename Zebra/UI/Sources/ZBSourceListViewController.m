@@ -24,12 +24,12 @@
 #import <UI/Common/ZBPartialPresentationController.h>
 
 @interface ZBSourceListViewController () {
+    UIBarButtonItem *addButton;
+    NSArray *filterResults;
     UISearchController *searchController;
     NSMutableArray *selectedSources;
-    UIBarButtonItem *addButton;
-    BOOL hasProblems;
-    NSUInteger withProblems;
     ZBSourceManager *sourceManager;
+    NSUInteger withProblems;
 }
 @property (nonnull) ZBSourceFilter *filter;
 @end
@@ -44,24 +44,19 @@
     if (self) {
         self.title = NSLocalizedString(@"Sources", @"");
         
+        sourceManager = [ZBSourceManager sharedInstance];
+        _filter = [[ZBSourceFilter alloc] init];
+        
         searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
         searchController.obscuresBackgroundDuringPresentation = NO;
         searchController.searchResultsUpdater = self;
         searchController.delegate = self;
-        searchController.searchBar.delegate = self;
         searchController.searchBar.autocapitalizationType = UITextAutocapitalizationTypeNone;
         searchController.searchBar.showsBookmarkButton = YES;
+        searchController.searchBar.delegate = self;
         [searchController.searchBar setImage:[UIImage systemImageNamed:@"line.horizontal.3.decrease.circle"] forSearchBarIcon:UISearchBarIconBookmark state:UIControlStateNormal];
-        
-        self.navigationItem.searchController = searchController;
-        
-        sourceManager = ZBSourceManager.sharedInstance;
-        [sourceManager addDelegate:self];
-        
 
-        filteredSources = sources.copy;
-        hasProblems = NO;
-        withProblems = 0;
+        self.navigationItem.searchController = searchController;
     }
     
     return self;
@@ -73,13 +68,40 @@
     [super viewDidLoad];
     
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBSourceTableViewCell" bundle:nil] forCellReuseIdentifier:@"sourceCell"];
+    
+    [self.tableView setTableHeaderView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 1)]];
+    [self.tableView setTableFooterView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 1)]];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     
-    sources = [sourceManager.sources mutableCopy];
+    [self loadSources];
 }
+
+- (void)loadSources {
+    if (_sources) {
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+            NSArray *filteredSources = [self->sourceManager filterSources:self.sources withFilter:self.filter];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self->filterResults = filteredSources;
+                [UIView transitionWithView:self.tableView duration:0.20f options:UIViewAnimationOptionTransitionCrossDissolve animations:^{
+                    if (self.filter.isActive) {
+                        [self->searchController.searchBar setImage:[UIImage systemImageNamed:@"line.horizontal.3.decrease.circle.fill"] forSearchBarIcon:UISearchBarIconBookmark state:UIControlStateNormal];
+                    } else {
+                        [self->searchController.searchBar setImage:[UIImage systemImageNamed:@"line.horizontal.3.decrease.circle"] forSearchBarIcon:UISearchBarIconBookmark state:UIControlStateNormal];
+                    }
+                    [self.tableView reloadData];
+                } completion:nil];
+            });
+        });
+    } else {
+        self.sources = self->sourceManager.sources;
+        [self loadSources];
+    }
+}
+
+#pragma mark - Navigation Buttons
 
 - (void)layoutNavigationButtonsRefreshing {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -146,6 +168,40 @@
     }
 }
 
+#pragma mark - Filter Delegate
+
+- (void)applyFilter:(ZBSourceFilter *)filter {
+    self.filter = filter;
+    
+    [self loadSources];
+    [ZBSettings setSourceFilter:self.filter];
+}
+
+#pragma mark - Search Results Updating Protocol
+
+- (void)updateSearchResultsForSearchController:(UISearchController *)searchController {
+    NSString *searchTerm = [searchController.searchBar.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    
+    self.filter.searchTerm = searchTerm.length > 0 ? searchTerm : NULL;
+    [self loadSources];
+}
+
+#pragma mark - Search Bar Delegate
+
+- (void)searchBarBookmarkButtonClicked:(UISearchBar *)searchBar {
+    ZBSourceFilterViewController *filter = [[ZBSourceFilterViewController alloc] initWithFilter:self.filter delegate:self];
+    
+    UINavigationController *filterVC = [[UINavigationController alloc] initWithRootViewController:filter];
+    filterVC.modalPresentationStyle = UIModalPresentationCustom;
+    filterVC.transitioningDelegate = self;
+    
+    [self presentViewController:filterVC animated:YES completion:nil];
+}
+
+#pragma mark - Table View Data Source
+
+#pragma mark - Table View Delegate
+
 - (void)setEditing:(BOOL)editing animated:(BOOL)animated {
     [super setEditing:editing animated:animated];
     
@@ -207,39 +263,39 @@
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return hasProblems + 1;
+    return (withProblems > 0) + 1;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section == 0 && hasProblems) {
+    if (section == 0 && withProblems > 0) {
         return 1;
     } else {
-        return filteredSources.count;
+        return filterResults.count;
     }
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == 0 && hasProblems) {
+    if (indexPath.section == 0 && withProblems > 0) {
         UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"problemChild"];
         
         return cell;
     }
     else {
         ZBSourceTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"sourceCell"];
-        [cell setSource:filteredSources[indexPath.row]];
+        [cell setSource:filterResults[indexPath.row]];
         
         return cell;
     }
 }
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    return !(indexPath.section == 0 && hasProblems);
+    return !(indexPath.section == 0 && withProblems > 0);
 }
 
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == 0 && hasProblems) {
+    if (indexPath.section == 0 && withProblems > 0) {
         cell.detailTextLabel.text = [NSString stringWithFormat:NSLocalizedString(@"%lu sources could not be fetched.", @""), (unsigned long)withProblems];
 //        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -251,21 +307,21 @@
         }
     }
     else {
-        ZBBaseSource *source = filteredSources[indexPath.row];
+        ZBBaseSource *source = [indexPath.row];
         
         BOOL busy = [sourceManager isSourceBusy:source];
-        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+        cell.selectionStyle = UITableViewCefilterResultsllSelectionStyleDefault;
         [(ZBSourceTableViewCell *)cell setSpinning:busy];
     }
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (hasProblems && indexPath.section == 0) {
+    if (withProblems > 0 && indexPath.section == 0) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         return;
     }
     
-    ZBSource *source = filteredSources[indexPath.row];
+    ZBSource *source = filterResults[indexPath.row];
     if (!self.editing) {
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         if ([source isKindOfClass:[ZBSource class]]) {
@@ -286,7 +342,7 @@
 
 - (void)tableView:(UITableView *)tableView didDeselectRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.editing) {
-        ZBSource *source = filteredSources[indexPath.row];
+        ZBSource *source = filterResults[indexPath.row];
         if ([selectedSources containsObject:source]) {
             [selectedSources removeObject:source];
         }
@@ -295,8 +351,8 @@
 }
 
 - (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == 1 || !hasProblems) {
-        ZBSource *source = filteredSources[indexPath.row];
+    if (indexPath.section == 1 || withProblems == 0) {
+        ZBSource *source = filterResults[indexPath.row];
         NSError *error;
         if (source.errors && source.errors.count) {
             error = source.errors.firstObject;
@@ -386,7 +442,7 @@
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView leadingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    ZBSource *source = filteredSources[indexPath.row];
+    ZBSource *source = filterResults[indexPath.row];
     
     UIContextualAction *copyAction = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal title:NSLocalizedString(@"Copy",@"") handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
         UIPasteboard *pasteBoard = [UIPasteboard generalPasteboard];
@@ -403,7 +459,7 @@
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
-    ZBSource *source = filteredSources[indexPath.row];
+    ZBSource *source = filterResults[indexPath.row];
     
     NSMutableArray *actions = [NSMutableArray new];
     if ([source canDelete]) {
@@ -431,184 +487,125 @@
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 
-#pragma mark - UISearchResultsUpdating
-
-- (void)filterSourcesForSearchTerm:(NSString *)searchTerm {
-    if ([[searchTerm stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] isEqualToString:@""]) {
-        filteredSources = [sources copy];
-    }
-    else {
-        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"(repositoryURI CONTAINS[cd] %@) OR (origin CONTAINS[cd] %@)", searchTerm, searchTerm];
-        
-        filteredSources = [sources filteredArrayUsingPredicate:predicate];
-    }
-}
-
-- (void)updateSearchResultsForSearchController:(nonnull UISearchController *)searchController {
-    NSString *searchTerm = searchController.searchBar.text;
-    [self filterSourcesForSearchTerm:searchTerm];
-    
-    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:hasProblems] withRowAnimation:UITableViewRowAnimationAutomatic];
-}
-
-// This is a workaround to FB8636369. When a UITableView has style UITableViewStyleInsetGrouped, there is no padding below the search bar when a UISearchController is used.
-// To add padding, we're updating the frame of an empty UIView, which is set as the UITableView's tableHeaderView.
-// When the UISearchController is presented, we set the height to 16px. When it's dismissed, we update set height to 0px.
-- (void)hideTableViewHeaderView:(BOOL)hidden {
-    if (!self.tableView.tableHeaderView) {
-        self.tableView.tableHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, self.tableView.bounds.size.width, 0.0)]; // We have to setup the header here because otherwise the navigation bar won't use large titles (for some reason)
-    }
-    
-    CGRect updatedFrame = self.tableView.tableHeaderView.frame;
-    updatedFrame.size.height = hidden ? CGFLOAT_MIN : 16;
-    [self.tableView beginUpdates];
-    [self.tableView.tableHeaderView setFrame:updatedFrame];
-    [self.tableView endUpdates];
-}
-
-- (void)willPresentSearchController:(UISearchController *)searchController {
-    if (@available(iOS 13.0, *)) {
-        [self hideTableViewHeaderView:NO];
-    }
-}
-
-- (void)willDismissSearchController:(UISearchController *)searchController {
-    if (@available(iOS 13.0, *)) {
-        [self hideTableViewHeaderView:YES];
-    }
-}
-
 #pragma mark - ZBSourceDelegate
 
 - (void)startedDownloadForSource:(ZBBaseSource *)source {
-    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-    if (index != NSNotFound) {
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-        });
-    }
+//    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+//    if (index != NSNotFound) {
+//        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+//        dispatch_async(dispatch_get_main_queue(), ^{
+//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+//        });
+//    }
 }
 
 - (void)finishedDownloadForSource:(ZBBaseSource *)source {
-    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-    if (index != NSNotFound) {
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-        });
-    }
+//    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+//    if (index != NSNotFound) {
+//        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+//        dispatch_async(dispatch_get_main_queue(), ^{
+//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+//        });
+//    }
 }
 
 - (void)startedImportForSource:(ZBBaseSource *)source {
-    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-    if (index != NSNotFound) {
-        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-        });
-    }
+//    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+//    if (index != NSNotFound) {
+//        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+//        dispatch_async(dispatch_get_main_queue(), ^{
+//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+//        });
+//    }
 }
 
 - (void)finishedImportForSource:(ZBBaseSource *)source {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-        if (index != NSNotFound) {
-            NSIndexPath *oldIndexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-            
-            self->sources = [self->sourceManager.sources mutableCopy];
-            [self filterSourcesForSearchTerm:self->searchController.searchBar.text];
-            
-            NSUInteger newIndex = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-            if (newIndex != NSNotFound) {
-                NSIndexPath *newIndexPath = [NSIndexPath indexPathForRow:newIndex inSection:self->hasProblems];
-                
-                if ([oldIndexPath isEqual:newIndexPath]) {
-                    [self.tableView reloadRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-                }
-                else {
-                    [self.tableView beginUpdates];
-                    [self.tableView deleteRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-                    [self.tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-                    [self.tableView endUpdates];
-                }
-            }
-        }
-    });
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+//        if (index != NSNotFound) {
+//            NSIndexPath *oldIndexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+//
+//            self->sources = [self->sourceManager.sources mutableCopy];
+//            [self filterSourcesForSearchTerm:self->searchController.searchBar.text];
+//
+//            NSUInteger newIndex = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
+//            if (newIndex != NSNotFound) {
+//                NSIndexPath *newIndexPath = [NSIndexPath indexPathForRow:newIndex inSection:self->hasProblems];
+//
+//                if ([oldIndexPath isEqual:newIndexPath]) {
+//                    [self.tableView reloadRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+//                }
+//                else {
+//                    [self.tableView beginUpdates];
+//                    [self.tableView deleteRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+//                    [self.tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+//                    [self.tableView endUpdates];
+//                }
+//            }
+//        }
+//    });
 }
 
 - (void)finishedSourceRefresh {
 //    [super finishedSourceRefresh];
 
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
-        self->hasProblems = self->withProblems = [self->sources filteredArrayUsingPredicate:search].count;
-        
-        if (self->hasProblems && self.tableView.numberOfSections == 1) {
-            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-        } else if (!self->hasProblems && self.tableView.numberOfSections == 2) {
-            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-        }
-    });
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
+//        self->hasProblems = self->withProblems = [self->sources filteredArrayUsingPredicate:search].count;
+//
+//        if (self->hasProblems && self.tableView.numberOfSections == 1) {
+//            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+//        } else if (!self->hasProblems && self.tableView.numberOfSections == 2) {
+//            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+//        }
+//    });
 }
 
 - (void)addedSources:(NSSet<ZBBaseSource *> *)sources {
-    self->sources = [sourceManager.sources mutableCopy];
-    [self filterSourcesForSearchTerm:searchController.searchBar.text];
-    
-    NSMutableArray *indexPaths = [NSMutableArray new];
-    for (ZBSource *source in sources) {
-        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
-        if (index != NSNotFound) {
-            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-            [indexPaths addObject:indexPath];
-        }
-    }
-    
-    if (indexPaths.count) [self.tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+//    self->sources = [sourceManager.sources mutableCopy];
+//    [self filterSourcesForSearchTerm:searchController.searchBar.text];
+//
+//    NSMutableArray *indexPaths = [NSMutableArray new];
+//    for (ZBSource *source in sources) {
+//        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
+//        if (index != NSNotFound) {
+//            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+//            [indexPaths addObject:indexPath];
+//        }
+//    }
+//
+//    if (indexPaths.count) [self.tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
 }
 
 - (void)removedSources:(NSSet<ZBBaseSource *> *)sources {
-    NSMutableArray *indexPaths = [NSMutableArray new];
-    for (ZBSource *source in sources) {
-        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
-        if (index != NSNotFound) {
-            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-            [indexPaths addObject:indexPath];
-        }
-    }
-    
-    self->sources = [sourceManager.sources mutableCopy];
-    [self filterSourcesForSearchTerm:searchController.searchBar.text];
-    
-    if (indexPaths.count) [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
-        self->hasProblems = self->withProblems = [self->sources filteredArrayUsingPredicate:search].count;
-        
-        if (self->hasProblems && self.tableView.numberOfSections == 1) {
-            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-        } else if (!self->hasProblems && self.tableView.numberOfSections == 2) {
-            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-        }
-    });
+//    NSMutableArray *indexPaths = [NSMutableArray new];
+//    for (ZBSource *source in sources) {
+//        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
+//        if (index != NSNotFound) {
+//            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
+//            [indexPaths addObject:indexPath];
+//        }
+//    }
+//
+//    self->sources = [sourceManager.sources mutableCopy];
+//    [self filterSourcesForSearchTerm:searchController.searchBar.text];
+//
+//    if (indexPaths.count) [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+//
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
+//        self->hasProblems = self->withProblems = [self->sources filteredArrayUsingPredicate:search].count;
+//
+//        if (self->hasProblems && self.tableView.numberOfSections == 1) {
+//            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+//        } else if (!self->hasProblems && self.tableView.numberOfSections == 2) {
+//            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+//        }
+//    });
 }
 
 - (void)scrollToTop {
-    [self.tableView scrollRectToVisible:CGRectMake(0, 0, 1, 1) animated:YES];
-}
-
-#pragma mark - Search Bar Delegate
-
-- (void)searchBarBookmarkButtonClicked:(UISearchBar *)searchBar {
-    ZBSourceFilterViewController *filter = [[ZBSourceFilterViewController alloc] initWithFilter:self.filter delegate:self];
-    
-    UINavigationController *filterVC = [[UINavigationController alloc] initWithRootViewController:filter];
-    filterVC.modalPresentationStyle = UIModalPresentationCustom;
-    filterVC.transitioningDelegate = self;
-    
-    [self presentViewController:filterVC animated:YES completion:nil];
+//    [self.tableView scrollRectToVisible:CGRectMake(0, 0, 1, 1) animated:YES];
 }
 
 #pragma mark - Presentation Controller

@@ -125,6 +125,7 @@
                     cell.textLabel.text = @"Package Count";
                     break;
             }
+            if (self.filter.sortOrder == indexPath.row) cell.accessoryType = UITableViewCellAccessoryCheckmark;
             break;
         }
     }
@@ -134,6 +135,27 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     return section == 0 ? NSLocalizedString(@"Filter By", @"") : NSLocalizedString(@"Sort By", @"");
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    
+    switch (indexPath.section) {
+        case 0: {
+            switch (indexPath.row) {
+                case 0:
+                    self.filter.stores = !self.filter.stores;
+                    break;
+            }
+            break;
+        }
+        case 1: {
+            self.filter.sortOrder = indexPath.row;
+            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:1] withRowAnimation:UITableViewRowAnimationAutomatic];
+            [delegate applyFilter:self.filter];
+            break;
+        }
+    }
 }
 
 @end

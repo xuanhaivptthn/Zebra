@@ -15,10 +15,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface ZBSourceListViewController : UITableViewController <ZBSourceDelegate, UISearchControllerDelegate, UISearchResultsUpdating, UISearchControllerDelegate, ZBFilterDelegate> {
-    NSMutableArray <ZBSource *> *sources;
-    NSArray <ZBSource *> *filteredSources;
-}
+@interface ZBSourceListViewController : UITableViewController <UISearchBarDelegate, UISearchControllerDelegate, UISearchResultsUpdating, UIViewControllerTransitioningDelegate, ZBFilterDelegate, ZBSourceDelegate>
+@property NSArray <ZBSource *> *sources;
 - (void)handleURL:(NSURL *)url;
 @end
 

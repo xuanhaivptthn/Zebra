@@ -46,12 +46,12 @@
     NSMutableArray *predicates = [NSMutableArray new];
     
     if (_searchTerm) {
-        NSPredicate *searchPredicate = [NSPredicate predicateWithFormat:@"label contains[cd] %@", _searchTerm];
+        NSPredicate *searchPredicate = [NSPredicate predicateWithFormat:@"label contains[cd] %@ OR repositoryURI contains[cd] %@", _searchTerm, _searchTerm];
         [predicates addObject:searchPredicate];
     }
     
     if (!_stores) {
-        NSPredicate *storesPredicate = [NSPredicate predicateWithFormat:@"paymentEndpointURL != NULL"];
+        NSPredicate *storesPredicate = [NSPredicate predicateWithFormat:@"supportsPaymentAPI == NO"];
         [predicates addObject:storesPredicate];
     }
     
