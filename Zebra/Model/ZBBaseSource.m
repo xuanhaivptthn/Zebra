@@ -475,4 +475,8 @@ NSString *const ZBSourceErrorDomain = @"xyz.willy.Zebra.sources";
     return 0;
 }
 
+- (BOOL)supportsPaymentAPI {
+    return NO;
+}
+
 @end

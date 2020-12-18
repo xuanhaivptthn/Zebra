@@ -80,8 +80,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addDelegate:(id <ZBSourceDelegate>)delegate;
 - (void)removeDelegate:(id <ZBSourceDelegate>)delegate;
 
-- (BOOL)isSourceBusy:(ZBBaseSource *)source;
-
 - (void)verifySources:(NSSet <ZBBaseSource *> *)sources delegate:(id <ZBSourceVerificationDelegate>)delegate;
 
 - (void)writeBaseSources:(NSSet <ZBBaseSource *> *)sources toFile:(NSString *)filePath error:(NSError **_Nullable)error;

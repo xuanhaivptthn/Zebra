@@ -21,7 +21,7 @@
 - (void)awakeFromNib {
     [super awakeFromNib];
     
-    self.backgroundColor = [UIColor cellBackgroundColor];
+//    self.backgroundColor = [UIColor cellBackgroundColor];
     self.sourceLabel.textColor = [UIColor primaryTextColor];
     self.urlLabel.textColor = [UIColor secondaryTextColor];
     self.tintColor = [UIColor accentColor];

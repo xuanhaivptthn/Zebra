@@ -24,13 +24,13 @@
 @import UIKit.UIDevice;
 
 @interface ZBSourceManager () {
-    NSDictionary *sourceMap;
+    NSMutableDictionary *sourceMap;
+    NSLock *mapLock;
     
     ZBPackageManager *packageManager;
     ZBDatabaseManager *databaseManager;
     ZBDownloadManager *downloadManager;
     NSMutableArray <id <ZBSourceDelegate>> *delegates;
-    NSMutableDictionary *busyList;
     NSDictionary *pinPreferences;
 }
 @end
@@ -60,6 +60,9 @@
         refreshInProgress = NO;
         
         pinPreferences = [self parsePreferences];
+        
+        sourceMap = [NSMutableDictionary new];
+        mapLock = [[NSLock alloc] init];
     }
     
     return self;
@@ -76,37 +79,36 @@
         return [NSArray new];
     }
     
-    if (!sourceMap) {
+    if (sourceMap.count == 0) {
         NSSet *sourcesFromDatabase = [[ZBDatabaseManager sharedInstance] sources];
         NSSet *unionSet = [sourcesFromDatabase setByAddingObjectsFromSet:baseSources];
         
-        NSMutableDictionary *tempSourceMap = [NSMutableDictionary new];
-        for (ZBBaseSource *source in unionSet) {
-            tempSourceMap[source.uuid] = source;
+        @synchronized (mapLock) {
+            for (ZBBaseSource *source in unionSet) {
+                sourceMap[source.uuid] = source;
+            }
         }
-        sourceMap = tempSourceMap;
-    } else if (sourceMap && baseSources.count != sourceMap.allValues.count) { // A source was added to sources.list at some point by someone and we don't list it
+    } else if (baseSources.count != sourceMap.count) { // A source was added to sources.list at some point by someone and we don't list it
         NSMutableSet *cache = [NSMutableSet setWithArray:[sourceMap allValues]];
         
         NSMutableSet *sourcesAdded = [baseSources mutableCopy];
         [sourcesAdded minusSet:cache];
-        NSLog(@"[Zebra] Sources Added: %@", sourcesAdded);
         
         NSMutableSet *sourcesRemoved = [cache mutableCopy];
         [sourcesRemoved minusSet:baseSources];
-        NSLog(@"[Zebra] Sources Removed: %@", sourcesAdded);
         
         if (sourcesAdded.count) [cache unionSet:sourcesAdded];
         if (sourcesRemoved.count) [cache minusSet:sourcesRemoved];
         
-        NSMutableDictionary *tempSourceMap = [NSMutableDictionary new];
-        for (ZBBaseSource *source in cache) {
-            tempSourceMap[source.uuid] = source;
+        @synchronized (mapLock) {
+            [sourceMap removeAllObjects];
+            for (ZBBaseSource *source in cache) {
+                sourceMap[source.uuid] = source;
+            }
         }
-        sourceMap = tempSourceMap;
         
-        if (sourcesAdded.count) [self bulkAddedSources:sourcesAdded];
-        if (sourcesRemoved.count) [self bulkRemovedSources:sourcesRemoved];
+        if (sourcesAdded.count) [self bulkAddedSources:sourcesAdded.allObjects];
+        if (sourcesRemoved.count) [self bulkRemovedSources:sourcesRemoved.allObjects];
         
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
             for (ZBSource *source in sourcesRemoved) {
@@ -143,14 +145,15 @@
             return;
         }
         
-        NSMutableDictionary *tempSourceMap = [sourceMap mutableCopy];
-        for (ZBBaseSource *source in sourcesToAdd) {
-            tempSourceMap[source.uuid] = source;
+        @synchronized (mapLock) {
+            for (ZBBaseSource *source in sourcesToAdd) {
+                sourceMap[source.uuid] = source;
+            }
         }
-        sourceMap = tempSourceMap;
         
-        [self bulkAddedSources:sourcesToAdd];
-        [self refreshSources:[sourcesToAdd allObjects] useCaching:NO error:nil];
+        NSArray *addedSources = sourcesToAdd.allObjects;
+        [self bulkAddedSources:addedSources];
+        [self refreshSources:addedSources useCaching:NO error:nil];
     }
 }
 
@@ -226,13 +229,13 @@
             }
         }
         
-        NSMutableDictionary *tempSourceMap = [sourceMap mutableCopy];
-        for (ZBBaseSource *source in sourcesToRemove) {
-            [tempSourceMap removeObjectForKey:source.uuid];
+        @synchronized (mapLock) {
+            for (ZBBaseSource *source in sourcesToRemove) {
+                [sourceMap removeObjectForKey:source.uuid];
+            }
         }
-        sourceMap = tempSourceMap;
         
-        [self bulkRemovedSources:sourcesToRemove];
+        [self bulkRemovedSources:sourcesToRemove.allObjects];
     }
 }
 
@@ -408,14 +411,12 @@
 
 - (void)startedDownloads {
     ZBLog(@"[Zebra](ZBSourceManager) Started downloads");
-    
-    if (!busyList) busyList = [NSMutableDictionary new];
 }
 
 - (void)startedDownloadingSource:(ZBBaseSource *)source {
     ZBLog(@"[Zebra](ZBSourceManager) Started downloading %@", source);
     
-    [busyList setObject:@YES forKey:source.uuid];
+    source.busy = YES;
     [self bulkStartedDownloadForSource:source];
 }
 
@@ -431,7 +432,8 @@
             source.errors = errors;
             source.warnings = [self warningsForSource:source];
         }
-
+        source.busy = NO;
+        
         [self bulkFinishedDownloadForSource:source];
         [self importSource:source];
     }
@@ -445,6 +447,7 @@
 #pragma mark - Importing Sources
 
 - (void)importSource:(ZBBaseSource *)baseSource {
+    baseSource.busy = YES;
     [self bulkStartedImportForSource:baseSource];
     
     if (baseSource.remote && baseSource.releaseFilePath) {
@@ -488,17 +491,15 @@
         memcpy(source[ZBSourceColumnSupportsFeaturedPackages], &supportsFeatured, 1);
         
         ZBSource *createdSource = [databaseManager insertSource:source];
-        if (createdSource) {
-            NSMutableDictionary *tempSourceMap = sourceMap.mutableCopy;
-            tempSourceMap[baseSource.uuid] = createdSource;
-            sourceMap = tempSourceMap;
-        }
+        if (createdSource) baseSource = createdSource;
         
         freeDualArrayOfSize(source, ZBSourceColumnCount);
         fclose(file);
     }
     
     [packageManager importPackagesFromSource:baseSource];
+    
+    baseSource.busy = NO;
     [self bulkFinishedImportForSource:baseSource];
 }
 
@@ -639,6 +640,10 @@
 }
 
 - (void)bulkStartedDownloadForSource:(ZBBaseSource *)source {
+    @synchronized (mapLock) {
+        sourceMap[source.uuid] = source;
+    }
+    
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(startedDownloadForSource:)]) {
             [delegate startedDownloadForSource:source];
@@ -647,6 +652,10 @@
 }
 
 - (void)bulkFinishedDownloadForSource:(ZBBaseSource *)source {
+    @synchronized (mapLock) {
+        sourceMap[source.uuid] = source;
+    }
+    
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(finishedDownloadForSource:)]) {
             [delegate finishedDownloadForSource:source];
@@ -655,7 +664,10 @@
 }
 
 - (void)bulkStartedImportForSource:(ZBBaseSource *)source {
-    [busyList setValue:@YES forKey:source.uuid];
+    @synchronized (mapLock) {
+        sourceMap[source.uuid] = source;
+    }
+    
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(startedImportForSource:)]) {
             [delegate startedImportForSource:source];
@@ -664,7 +676,10 @@
 }
 
 - (void)bulkFinishedImportForSource:(ZBBaseSource *)source {
-    [busyList setValue:@NO forKey:source.uuid];
+    @synchronized (mapLock) {
+        sourceMap[source.uuid] = source;
+    }
+    
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(finishedImportForSource:)]) {
             [delegate finishedImportForSource:source];
@@ -672,8 +687,8 @@
     }
     
     int sum = 0;
-    for (NSNumber *n in busyList.allValues) {
-        sum += [n intValue];
+    for (ZBBaseSource *n in sourceMap.allValues) {
+        sum += n.busy;
         if (sum != 0) break;
     }
     if (sum == 0) [self bulkFinishedSourceRefresh];
@@ -690,7 +705,7 @@
 }
 
 
-- (void)bulkAddedSources:(NSSet <ZBBaseSource *> *)sources {
+- (void)bulkAddedSources:(NSArray <ZBBaseSource *> *)sources {
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(addedSources:)]) {
             [delegate addedSources:sources];
@@ -698,7 +713,7 @@
     }
 }
 
-- (void)bulkRemovedSources:(NSSet <ZBBaseSource *> *)sources {
+- (void)bulkRemovedSources:(NSArray <ZBBaseSource *> *)sources {
     for (NSObject <ZBSourceDelegate> *delegate in delegates) {
         if ([delegate respondsToSelector:@selector(removedSources:)]) {
             [delegate removedSources:sources];
@@ -730,10 +745,6 @@
     // TODO: More things are probably required here
     [downloadManager stopAllDownloads];
     [self bulkFinishedSourceRefresh];
-}
-
-- (BOOL)isSourceBusy:(ZBBaseSource *)source {
-    return [[busyList objectForKey:source.uuid] boolValue];
 }
 
 - (NSDictionary <NSString *, NSNumber *> *)sectionsForSource:(ZBSource *)source {

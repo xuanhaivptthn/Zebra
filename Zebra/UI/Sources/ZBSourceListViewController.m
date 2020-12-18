@@ -67,6 +67,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.tableView.allowsMultipleSelectionDuringEditing = YES;
+    
     [self.tableView registerNib:[UINib nibWithNibName:@"ZBSourceTableViewCell" bundle:nil] forCellReuseIdentifier:@"sourceCell"];
     
     [self.tableView setTableHeaderView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 1)]];
@@ -98,12 +100,53 @@
     }
 }
 
-#pragma mark - Navigation Buttons
+- (void)handleURL:(NSURL *)url {
+    NSString *scheme = [url scheme];
+    NSArray *choices = @[@"file", @"zbra"];
+    
+    switch ([choices indexOfObject:scheme]) {
+        case 0:
+            // TODO: Re-implement source importing from .list
+            break;
+        case 1: {
+            NSString *path = [url path];
+            if (![path isEqualToString:@""]) {
+                NSArray *components = [path pathComponents];
+                if ([components count] >= 4) {
+                    NSString *urlString = [path componentsSeparatedByString:@"/add/"][1];
+                    if (![urlString hasSuffix:@"/"]) {
+                        urlString = [urlString stringByAppendingString:@"/"];
+                    }
+                    
+                    NSURL *url;
+                    if ([urlString containsString:@"https://"] || [urlString containsString:@"http://"]) {
+                        url = [NSURL URLWithString:urlString];
+                    } else {
+                        url = [NSURL URLWithString:[@"https://" stringByAppendingString:urlString]];
+                    }
+                    
+                    if (url && url.scheme && url.host) {
+                        [self presentAddViewWithURL:url];
+                    } else {
+                        [self presentAddView];
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
 
-- (void)layoutNavigationButtonsRefreshing {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        self.navigationItem.rightBarButtonItem = nil;
-    });
+#pragma mark - Navigation Button Layout
+
+- (void)layoutNavigationButtons {
+    if (self.refreshControl.isRefreshing) {
+        [self layoutNavigationButtonsRefreshing];
+    } else if (self.editing) {
+        [self layoutNavigationButtonsEditing];
+    } else {
+        [self layoutNavigationButtonsNormal];
+    }
 }
 
 - (void)layoutNavigationButtonsNormal {
@@ -111,6 +154,12 @@
         self.navigationItem.leftBarButtonItem = self.editButtonItem;
         self->addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(presentAddView)];
         self.navigationItem.rightBarButtonItems = @[self->addButton];
+    });
+}
+
+- (void)layoutNavigationButtonsRefreshing {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.navigationItem.rightBarButtonItem = nil;
     });
 }
 
@@ -123,11 +172,10 @@
     });
 }
 
+#pragma mark - Navigation Button Actions
+
 - (void)presentAddView {
-    ZBSourceAddViewController *addView = [[ZBSourceAddViewController alloc] init];
-    UINavigationController *navController = [[UINavigationController alloc] initWithRootViewController:addView];
-    
-    [self presentViewController:navController animated:YES completion:nil];
+    [self presentAddViewWithURL:NULL];
 }
 
 - (void)presentAddViewWithURL:(NSURL *)url {
@@ -174,6 +222,16 @@
     }
 }
 
+- (void)setEditing:(BOOL)editing animated:(BOOL)animated {
+    [super setEditing:editing animated:animated];
+    
+    if (editing) {
+        [self layoutNavigationButtonsEditing];
+    } else {
+        [self layoutNavigationButtonsNormal];
+    }
+}
+
 #pragma mark - Filter Delegate
 
 - (void)applyFilter:(ZBSourceFilter *)filter {
@@ -206,61 +264,6 @@
 
 #pragma mark - Table View Data Source
 
-#pragma mark - Table View Delegate
-
-- (void)setEditing:(BOOL)editing animated:(BOOL)animated {
-    [super setEditing:editing animated:animated];
-    
-    if (editing) {
-        [self layoutNavigationButtonsEditing];
-    } else {
-        [self layoutNavigationButtonsNormal];
-    }
-}
-
-- (void)tableView:(UITableView *)tableView willBeginEditingRowAtIndexPath:(NSIndexPath *)indexPath {
-    [super setEditing:YES animated:YES];
-}
-
-- (void)handleURL:(NSURL *)url {
-    NSString *scheme = [url scheme];
-    NSArray *choices = @[@"file", @"zbra"];
-    
-    switch ([choices indexOfObject:scheme]) {
-        case 0:
-            // TODO: Re-implement source importing from .list
-            break;
-        case 1: {
-            NSString *path = [url path];
-            if (![path isEqualToString:@""]) {
-                NSArray *components = [path pathComponents];
-                if ([components count] >= 4) {
-                    NSString *urlString = [path componentsSeparatedByString:@"/add/"][1];
-                    if (![urlString hasSuffix:@"/"]) {
-                        urlString = [urlString stringByAppendingString:@"/"];
-                    }
-                    
-                    NSURL *url;
-                    if ([urlString containsString:@"https://"] || [urlString containsString:@"http://"]) {
-                        url = [NSURL URLWithString:urlString];
-                    } else {
-                        url = [NSURL URLWithString:[@"https://" stringByAppendingString:urlString]];
-                    }
-                    
-                    if (url && url.scheme && url.host) {
-                        [self presentAddViewWithURL:url];
-                    } else {
-                        [self presentAddView];
-                    }
-                }
-                break;
-            }
-        }
-    }
-}
-
-#pragma mark - UITableViewDataSource
-
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     return (withProblems > 0) + 1;
 }
@@ -291,7 +294,12 @@
     return !(indexPath.section == 0 && withProblems > 0);
 }
 
-#pragma mark - UITableViewDelegate
+
+#pragma mark - Table View Delegate
+
+- (void)tableView:(UITableView *)tableView willBeginEditingRowAtIndexPath:(NSIndexPath *)indexPath {
+    [super setEditing:YES animated:YES];
+}
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (indexPath.section == 0 && withProblems > 0) {
@@ -308,7 +316,7 @@
     else {
         ZBBaseSource *source = filterResults[indexPath.row];
         
-        BOOL busy = [sourceManager isSourceBusy:source];
+        BOOL busy = source.busy;
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;
         [(ZBSourceTableViewCell *)cell setSpinning:busy];
     }
@@ -486,121 +494,127 @@
     return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 
-#pragma mark - ZBSourceDelegate
+#pragma mark - Source Delegate
 
 - (void)startedDownloadForSource:(ZBBaseSource *)source {
-//    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-//    if (index != NSNotFound) {
-//        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-//        });
-//    }
+    NSUInteger index = [filterResults indexOfObject:(ZBSource *)source];
+    if (index != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:withProblems > 0];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
 }
 
 - (void)finishedDownloadForSource:(ZBBaseSource *)source {
-//    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-//    if (index != NSNotFound) {
-//        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-//        });
-//    }
+    NSUInteger index = [filterResults indexOfObject:(ZBSource *)source];
+    if (index != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:withProblems > 0];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
 }
 
 - (void)startedImportForSource:(ZBBaseSource *)source {
-//    NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-//    if (index != NSNotFound) {
-//        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-//        });
-//    }
+    NSUInteger index = [filterResults indexOfObject:(ZBSource *)source];
+    if (index != NSNotFound) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:withProblems > 0];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+        });
+    }
 }
 
 - (void)finishedImportForSource:(ZBBaseSource *)source {
-//    dispatch_async(dispatch_get_main_queue(), ^{
-//        NSUInteger index = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-//        if (index != NSNotFound) {
-//            NSIndexPath *oldIndexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-//
-//            self->sources = [self->sourceManager.sources mutableCopy];
-//            [self filterSourcesForSearchTerm:self->searchController.searchBar.text];
-//
-//            NSUInteger newIndex = [[self->filteredSources copy] indexOfObject:(ZBSource *)source];
-//            if (newIndex != NSNotFound) {
-//                NSIndexPath *newIndexPath = [NSIndexPath indexPathForRow:newIndex inSection:self->hasProblems];
-//
-//                if ([oldIndexPath isEqual:newIndexPath]) {
-//                    [self.tableView reloadRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-//                }
-//                else {
-//                    [self.tableView beginUpdates];
-//                    [self.tableView deleteRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-//                    [self.tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-//                    [self.tableView endUpdates];
-//                }
-//            }
-//        }
-//    });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSUInteger index = [self->filterResults indexOfObject:(ZBSource *)source];
+        if (index != NSNotFound) {
+            NSIndexPath *oldIndexPath = [NSIndexPath indexPathForRow:index inSection:self->withProblems > 0];
+
+            self.sources = self->sourceManager.sources;
+            self->filterResults = [self->sourceManager filterSources:self.sources withFilter:self.filter];
+
+            NSUInteger newIndex = [self->filterResults indexOfObject:(ZBSource *)source];
+            if (newIndex != NSNotFound) {
+                NSIndexPath *newIndexPath = [NSIndexPath indexPathForRow:newIndex inSection:self->withProblems > 0];
+
+                if ([oldIndexPath isEqual:newIndexPath]) {
+                    [self.tableView reloadRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+                }
+                else {
+                    [self.tableView beginUpdates];
+                    [self.tableView deleteRowsAtIndexPaths:@[oldIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+                    [self.tableView insertRowsAtIndexPaths:@[newIndexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+                    [self.tableView endUpdates];
+                }
+            }
+        }
+    });
 }
 
 - (void)finishedSourceRefresh {
-//    [super finishedSourceRefresh];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
+        self->withProblems = [self.sources filteredArrayUsingPredicate:search].count;
 
-//    dispatch_async(dispatch_get_main_queue(), ^{
-//        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
-//        self->hasProblems = self->withProblems = [self->sources filteredArrayUsingPredicate:search].count;
-//
-//        if (self->hasProblems && self.tableView.numberOfSections == 1) {
-//            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-//        } else if (!self->hasProblems && self.tableView.numberOfSections == 2) {
-//            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-//        }
-//    });
+        if (self->withProblems > 0 && self.tableView.numberOfSections == 1) {
+            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+        } else if (self->withProblems == 0 && self.tableView.numberOfSections == 2) {
+            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+        }
+    });
 }
 
-- (void)addedSources:(NSSet<ZBBaseSource *> *)sources {
-//    self->sources = [sourceManager.sources mutableCopy];
-//    [self filterSourcesForSearchTerm:searchController.searchBar.text];
-//
-//    NSMutableArray *indexPaths = [NSMutableArray new];
-//    for (ZBSource *source in sources) {
-//        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
-//        if (index != NSNotFound) {
-//            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-//            [indexPaths addObject:indexPath];
-//        }
-//    }
-//
-//    if (indexPaths.count) [self.tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+- (void)addedSources:(NSArray *)sources {
+    self.sources = [self.sources arrayByAddingObjectsFromArray:sources];
+    filterResults = [sourceManager filterSources:self.sources withFilter:self.filter];
+
+    NSMutableArray *indexPaths = [NSMutableArray new];
+    for (ZBSource *source in sources) {
+        NSUInteger index = [filterResults indexOfObject:source];
+        if (index != NSNotFound) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:withProblems > 0];
+            [indexPaths addObject:indexPath];
+        }
+    }
+
+    if (indexPaths.count) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+        });
+    }
 }
 
-- (void)removedSources:(NSSet<ZBBaseSource *> *)sources {
-//    NSMutableArray *indexPaths = [NSMutableArray new];
-//    for (ZBSource *source in sources) {
-//        NSUInteger index = [[self->filteredSources copy] indexOfObject:source];
-//        if (index != NSNotFound) {
-//            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:self->hasProblems];
-//            [indexPaths addObject:indexPath];
-//        }
-//    }
-//
-//    self->sources = [sourceManager.sources mutableCopy];
-//    [self filterSourcesForSearchTerm:searchController.searchBar.text];
-//
-//    if (indexPaths.count) [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
-//
-//    dispatch_async(dispatch_get_main_queue(), ^{
-//        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
-//        self->hasProblems = self->withProblems = [self->sources filteredArrayUsingPredicate:search].count;
-//
-//        if (self->hasProblems && self.tableView.numberOfSections == 1) {
-//            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-//        } else if (!self->hasProblems && self.tableView.numberOfSections == 2) {
-//            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
-//        }
-//    });
+- (void)removedSources:(NSArray *)sources {
+    NSMutableArray *sourcesCopy = [self.sources mutableCopy];
+    for (ZBBaseSource *source in sources) {
+        [sourcesCopy removeObject:source];
+    }
+    self.sources = sourcesCopy;
+    filterResults = [sourceManager filterSources:self.sources withFilter:self.filter];
+    
+    NSMutableArray *indexPaths = [NSMutableArray new];
+    for (ZBSource *source in sources) {
+        NSUInteger index = [filterResults indexOfObject:source];
+        if (index != NSNotFound) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:withProblems > 0];
+            [indexPaths addObject:indexPath];
+        }
+    }
+
+    if (indexPaths.count) [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationAutomatic];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSPredicate *search = [NSPredicate predicateWithFormat:@"errors != nil AND errors[SIZE] > 0"];
+        self->withProblems = [self.sources filteredArrayUsingPredicate:search].count;
+
+        if (self->withProblems > 0 && self.tableView.numberOfSections == 1) {
+            [self.tableView insertSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+        } else if (self->withProblems == 0 && self.tableView.numberOfSections == 2) {
+            [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationAutomatic];
+        }
+    });
 }
 
 - (void)scrollToTop {
